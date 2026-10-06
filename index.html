@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tetris dos Professores — Protótipo</title>
+  <meta name="description" content="Protótipo jogável do Projeto Integrador: mecânica central do Tetris com blocos de professor.">
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+  <!--
+    ESTA É A ENTREGA 2 — PROTÓTIPO.
+
+    O enunciado pede "apenas a mecânica central, funcionando de forma mínima e
+    jogável", com "elementos gráficos simples (placeholders, formas geométricas
+    ou textos)". Esta página é exatamente isso: um tabuleiro, três números e as
+    duas caixas que o jogador precisa ver para decidir a jogada.
+
+    Menu, skins, som, partículas e análise entram no PI 3 e no PI 4.
+  -->
+
+  <header class="cabecalho">
+    <h1>Tetris dos Professores</h1>
+    <p class="cabecalho__nota">Protótipo · PI 2 · mecânica central</p>
+  </header>
+
+  <main class="jogo">
+
+    <section class="tabuleiro" aria-label="Tabuleiro">
+      <canvas id="tabuleiro" width="300" height="600"></canvas>
+
+      <!--
+        O atributo `hidden` é ligado e desligado pelo JavaScript.
+        O CSS deste projeto tem `[hidden] { display: none !important }` por um
+        motivo concreto: sem o `!important`, qualquer regra com `display` vence
+        o atributo e o aviso fica permanentemente por cima do tabuleiro.
+      -->
+      <div class="aviso" id="aviso" hidden>
+        <strong id="aviso-titulo">Pausado</strong>
+        <span id="aviso-texto">Pressione P para continuar</span>
+      </div>
+
+      <!--
+        Faixa de recado, separada do aviso de propósito.
+
+        As duas coisas parecem iguais e não são: o AVISO interrompe a partida e
+        por isso pode escurecer o tabuleiro; a FAIXA acontece no meio da jogada,
+        e escurecer a tela a cada três peças tornaria o jogo injogável.
+      -->
+      <div class="faixa" id="faixa" hidden aria-live="polite"></div>
+    </section>
+
+    <aside class="painel">
+
+      <div class="placar">
+        <div class="placar__item">
+          <span class="placar__rotulo">Pontos</span>
+          <strong class="placar__valor" id="pontos">0</strong>
+        </div>
+        <div class="placar__item">
+          <span class="placar__rotulo">Linhas</span>
+          <strong class="placar__valor" id="linhas">0</strong>
+        </div>
+        <div class="placar__item">
+          <span class="placar__rotulo">Nível</span>
+          <strong class="placar__valor" id="nivel">1</strong>
+        </div>
+      </div>
+
+      <div class="caixas">
+        <div class="caixa">
+          <span class="caixa__rotulo">Próxima</span>
+          <canvas id="proxima" width="96" height="72"></canvas>
+        </div>
+        <div class="caixa">
+          <span class="caixa__rotulo">Reserva</span>
+          <canvas id="reserva" width="96" height="72"></canvas>
+        </div>
+      </div>
+
+      <div class="professores">
+        <span class="caixa__rotulo">Professores</span>
+        <p class="professores__texto">
+          Alguns blocos nascem marcados. Encoste dois deles lado a lado
+          — nunca na diagonal — e os dois somem, explodindo a área ao redor.
+        </p>
+        <ul class="professores__lista" id="professores-lista"></ul>
+      </div>
+
+      <div class="controles">
+        <span class="caixa__rotulo">Controles</span>
+        <dl class="controles__lista" id="controles-lista"></dl>
+      </div>
+
+      <button class="botao" id="reiniciar" type="button">Reiniciar partida (R)</button>
+
+    </aside>
+
+  </main>
+
+  <footer class="rodape">
+    <p>
+      Projeto Integrador de Games · Entrega 2 — protótipo.
+      Núcleo com <strong>92 testes automatizados</strong>: rode <code>npm test</code>.
+    </p>
+  </footer>
+
+  <script type="module" src="src/main.js"></script>
+
+</body>
+</html>

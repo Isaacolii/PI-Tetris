@@ -1,0 +1,349 @@
+/**
+ * main.css — aparência do protótipo.
+ *
+ * Propositalmente curto. O enunciado do PI 2 pede elementos gráficos simples,
+ * então aqui há só o necessário para o jogo ser legível e jogável: uma coluna
+ * com o tabuleiro, outra com os números, e nada mais.
+ *
+ * O visual completo (skins, fundos animados, efeitos) entra no PI 3.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   A REGRA MAIS IMPORTANTE DESTE ARQUIVO
+
+   Sem o `!important`, qualquer regra que defina `display` vence o atributo
+   `hidden` do HTML — porque a regra do autor tem prioridade sobre a folha de
+   estilo do navegador. Foi um bug real deste projeto: o aviso de "Pausado",
+   com fundo preto e desfoque, ficou permanentemente por cima do tabuleiro, e
+   o jogo parecia opaco sem nenhuma mensagem de erro.
+   ═══════════════════════════════════════════════════════════════════════════ */
+[hidden] {
+  display: none !important;
+}
+
+:root {
+  --fundo: #0d0f16;
+  --superficie: #161a25;
+  --superficie-2: #1d2230;
+  --linha: #2b3145;
+
+  --texto: #e6eaf2;
+  --texto-fraco: #97a1b5;   /* medido em 6:1 sobre --superficie */
+  --destaque: #5ad2f0;
+
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fonte-num: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 40px;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte);
+  font-size: 15px;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  min-height: 100vh;
+}
+
+/* ───────────────────────────── cabeçalho ───────────────────────────── */
+
+.cabecalho {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cabecalho h1 {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cabecalho__nota {
+  margin: 0;
+  font-family: var(--fonte-num);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+/* ───────────────────────────── layout do jogo ───────────────────────────── */
+
+.jogo {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tabuleiro {
+  position: relative;
+  line-height: 0;   /* sem isso o canvas ganha alguns pixels de descida da linha */
+}
+
+#tabuleiro {
+  display: block;
+  border: 2px solid var(--linha);
+  background: #12141c;
+}
+
+/* Camada de aviso: pausa e fim de jogo. */
+.aviso {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(8, 10, 16, 0.86);
+  backdrop-filter: blur(2px);
+  text-align: center;
+  line-height: 1.5;
+  padding: 16px;
+}
+
+.aviso strong {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.aviso span {
+  font-size: 14px;
+  color: var(--texto-fraco);
+  max-width: 24ch;
+}
+
+/*
+ * Faixa de recado — aparece durante a jogada e NÃO pode atrapalhar.
+ *
+ * Fica colada no topo do tabuleiro, onde a pilha quase nunca chega, e some
+ * sozinha. Sem fundo escuro cobrindo a área de jogo: o jogador precisa
+ * continuar vendo onde a peça está caindo enquanto lê o recado.
+ */
+.faixa {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  padding: 6px 10px;
+  background: rgba(13, 15, 22, 0.88);
+  border: 1px solid var(--destaque);
+  color: var(--texto);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;   /* nunca rouba um clique do tabuleiro */
+}
+
+/* ───────────────────────────── painel lateral ───────────────────────────── */
+
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 238px;
+  flex: none;
+}
+
+.placar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--linha);
+  border: 1px solid var(--linha);
+}
+
+.placar__item {
+  background: var(--superficie);
+  padding: 9px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+}
+
+.placar__rotulo {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+.placar__valor {
+  font-family: var(--fonte-num);
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;   /* os dígitos não dançam ao mudar */
+}
+
+.caixas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.caixa,
+.professores,
+.controles {
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  padding: 10px 11px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.caixa__rotulo {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+.caixa canvas {
+  display: block;
+  width: 100%;
+  height: 58px;
+  background: var(--superficie-2);
+}
+
+/* ───────────────────────────── professores ───────────────────────────── */
+
+.professores__texto {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--texto-fraco);
+  line-height: 1.45;
+}
+
+.professores__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.professores__lista li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--texto-fraco);
+}
+
+.professores__disco {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--fonte-num);
+  font-size: 10px;
+  font-weight: 700;
+  color: #12141c;
+  flex: none;
+}
+
+/* ───────────────────────────── controles ───────────────────────────── */
+
+.controles__lista {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  font-size: 12.5px;
+}
+
+.controles__lista dt {
+  color: var(--texto-fraco);
+}
+
+.controles__lista dd {
+  margin: 0;
+  font-family: var(--fonte-num);
+  font-size: 12px;
+  text-align: right;
+  color: var(--texto);
+}
+
+/* ───────────────────────────── botão ───────────────────────────── */
+
+.botao {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 9px 12px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  border: 1px solid var(--linha);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.botao:hover {
+  background: #262d3e;
+  border-color: #3a4256;
+}
+
+.botao:active {
+  transform: translateY(1px);
+}
+
+.botao:focus-visible {
+  outline: 2px solid var(--destaque);
+  outline-offset: 2px;
+}
+
+/* ───────────────────────────── rodapé ───────────────────────────── */
+
+.rodape {
+  max-width: 62ch;
+  text-align: center;
+}
+
+.rodape p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--texto-fraco);
+}
+
+.rodape code {
+  font-family: var(--fonte-num);
+  font-size: 12px;
+  color: var(--texto);
+}
+
+/* ───────────────────────────── telas estreitas ───────────────────────────── */
+
+@media (max-width: 620px) {
+  .jogo {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .painel {
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
