@@ -5,29 +5,6 @@ funcionando e jogável, com elementos gráficos simples.
 
 ---
 
-## O que esta entrega contém — e o que não contém
-
-O enunciado do PI 2 pede o protótipo com **apenas a mecânica central**, e aceita
-que os elementos visuais sejam placeholders ou formas geométricas. O recorte
-abaixo é deliberado: o que está de fora não está faltando, está agendado.
-
-| Nesta entrega | Entra depois |
-|---|---|
-| Peça cai, move, gira e trava | Menu e seleção de modo (PI 3) |
-| Rotação com desvio de parede (SRS) | Catálogo de skins e fundos (PI 3) |
-| Linha completa some e a pilha desce | Som (PI 3) |
-| Sorteio 7-bag, próxima peça e reserva | Controle por toque (PI 3) |
-| Gravidade que acelera por nível | Caricaturas dos professores (PI 3) |
-| Pontuação, linhas e nível | Partículas e câmera lenta (PI 4) |
-| Blocos de professor e poderes especiais | Análise por IA (PI 4) |
-| 92 testes automatizados | Instalação offline e publicação (PI 4) |
-
-Os blocos são **retângulos coloridos** e cada professor é um **disco com a
-letra do seu identificador**. É o placeholder que o enunciado autoriza, e ele
-sai sem tocar na lógica quando a arte ficar pronta.
-
----
-
 ## Como rodar
 
 Precisa apenas do **Node.js** instalado. O projeto **não tem dependências** —
