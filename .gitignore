@@ -1,0 +1,24 @@
+# Dependências (o projeto não tem nenhuma, mas o SDK da IA entra aqui se for instalado)
+node_modules/
+
+# Variáveis de ambiente — NUNCA versione a chave da API
+.env
+.env.local
+.env*.local
+
+# Vercel
+.vercel/
+
+# Capturas geradas pelo servidor de desenvolvimento.
+# Comente a linha abaixo se quiser versionar as imagens usadas no README.
+# capturas/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
