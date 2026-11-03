@@ -1,349 +1,1736 @@
 /**
- * main.css — aparência do protótipo.
+ * main.css — Estilos da interface.
  *
- * Propositalmente curto. O enunciado do PI 2 pede elementos gráficos simples,
- * então aqui há só o necessário para o jogo ser legível e jogável: uma coluna
- * com o tabuleiro, outra com os números, e nada mais.
+ * Organização:
+ *   1. Variáveis e base
+ *   2. Cabeçalho
+ *   3. Tela inicial
+ *   4. Área de jogo
+ *   5. Painéis (skins, estatísticas, ranking, ajustes)
+ *   6. Componentes reutilizáveis
+ *   7. Acessibilidade
+ *   8. Responsivo
  *
- * O visual completo (skins, fundos animados, efeitos) entra no PI 3.
+ * A cor do plano de fundo vem da variável --fundo-pagina, que é escrita pelo
+ * JavaScript quando o jogador troca a skin de fundo (ver BackgroundRenderer).
  */
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   A REGRA MAIS IMPORTANTE DESTE ARQUIVO
+/* ═══════════════════ 1. Variáveis e base ═══════════════════ */
 
-   Sem o `!important`, qualquer regra que defina `display` vence o atributo
-   `hidden` do HTML — porque a regra do autor tem prioridade sobre a folha de
-   estilo do navegador. Foi um bug real deste projeto: o aviso de "Pausado",
-   com fundo preto e desfoque, ficou permanentemente por cima do tabuleiro, e
-   o jogo parecia opaco sem nenhuma mensagem de erro.
-   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --fundo-pagina: #12141c;
+  --fundo-solido: #12141c;
+
+  /*
+   * Duas camadas de superfície, não uma.
+   * A área de jogo fica sobre a camada baixa; os painéis flutuam na camada
+   * alta. Sem essa diferença, tudo tinha o mesmo peso visual e o tabuleiro —
+   * que é o assunto da tela — competia com o placar.
+   */
+  --superficie: rgba(255, 255, 255, 0.045);
+  --superficie-forte: rgba(255, 255, 255, 0.085);
+  --superficie-alta: #191d28;
+
+  --borda: rgba(255, 255, 255, 0.1);
+  --borda-forte: rgba(255, 255, 255, 0.2);
+
+  /*
+   * Contraste medido, não estimado. O tom fraco antigo (40%) ficava em 3,5:1
+   * contra o fundo — abaixo do mínimo de 4,5:1 que texto pequeno exige, e ele
+   * era justamente o usado nos rótulos miúdos do placar. A 58% chega a 6:1.
+   */
+  --texto: #eef1f6;
+  --texto-suave: rgba(238, 241, 246, 0.72);
+  --texto-fraco: rgba(238, 241, 246, 0.58);
+
+  --acento: #4dd0e1;
+  --acento-escuro: #1a8f9e;
+  --acento-fraco: rgba(77, 208, 225, 0.14);
+  --destaque: #ffb74d;
+  --perigo: #ef5350;
+  --sucesso: #66bb6a;
+
+  --raio: 14px;
+  --raio-pequeno: 9px;
+  --raio-minimo: 6px;
+
+  --sombra: 0 18px 44px rgba(0, 0, 0, 0.5);
+  --sombra-tabuleiro: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  /*
+   * Duas curvas, dois propósitos. A rápida responde ao dedo (hover, foco); a
+   * expressiva move superfícies inteiras. Ambas desaceleram forte no fim — sem
+   * bounce, que faz uma ferramenta parecer brinquedo.
+   */
+  --transicao: 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transicao-lenta: 320ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Escala de profundidade nomeada — nunca z-index arbitrário. */
+  --z-conteudo: 1;
+  --z-sobreposicao: 10;
+  --z-painel: 50;
+  --z-notificacao: 90;
+  --z-pular: 100;
+
+  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte-numeros: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/*
+ * O atributo hidden precisa vencer QUALQUER regra de display.
+ *
+ * Isto não é preciosismo: o navegador aplica `[hidden] { display: none }` na
+ * folha de estilo dele, e qualquer regra nossa — mesmo uma classe simples como
+ * `.aviso { display: flex }` — vence essa, porque estilo do autor sempre passa
+ * na frente do estilo do navegador. O resultado é um elemento marcado como
+ * escondido que continua na tela.
+ *
+ * Foi exatamente o que aconteceu aqui: a camada de aviso ("Pausado"), com fundo
+ * preto a 86% e desfoque, ficou permanentemente sobre o tabuleiro e deixou o
+ * jogo inteiro opaco. Esta regra fecha a porta para a classe inteira de erro.
+ */
 [hidden] {
   display: none !important;
 }
 
-:root {
-  --fundo: #0d0f16;
-  --superficie: #161a25;
-  --superficie-2: #1d2230;
-  --linha: #2b3145;
-
-  --texto: #e6eaf2;
-  --texto-fraco: #97a1b5;   /* medido em 6:1 sobre --superficie */
-  --destaque: #5ad2f0;
-
-  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --fonte-num: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
-}
-
-* {
-  box-sizing: border-box;
+html,
+body {
+  height: 100%;
+  margin: 0;
 }
 
 body {
-  margin: 0;
-  padding: 24px 16px 40px;
-  background: var(--fundo);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--fundo-pagina);
   color: var(--texto);
   font-family: var(--fonte);
-  font-size: 15px;
-  line-height: 1.55;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 22px;
-  min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Impede o "puxar para atualizar" e o zoom por toque duplo atrapalharem o jogo. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
-/* ───────────────────────────── cabeçalho ───────────────────────────── */
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.25;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--borda-forte);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  font-family: inherit;
+  font-size: 0.78em;
+  color: var(--texto-suave);
+}
+
+/* Link de pulo: escondido até receber foco pelo teclado. */
+.pular-para-conteudo {
+  position: absolute;
+  top: -60px;
+  left: 8px;
+  z-index: var(--z-pular);
+  padding: 10px 16px;
+  border-radius: var(--raio-pequeno);
+  background: var(--acento);
+  color: #04252a;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--transicao);
+}
+
+.pular-para-conteudo:focus {
+  top: 8px;
+}
+
+/* ═══════════════════ 2. Cabeçalho ═══════════════════ */
 
 .cabecalho {
-  text-align: center;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px clamp(12px, 3vw, 28px);
+  border-bottom: 1px solid var(--borda);
+  /* Barra levemente mais escura que a página: assenta o conteúdo sem pesar. */
+  background: rgba(0, 0, 0, 0.3);
 }
 
-.cabecalho h1 {
+.cabecalho__titulo {
   margin: 0;
-  font-size: clamp(22px, 5vw, 30px);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 1rem;
 }
 
-.cabecalho__nota {
-  margin: 0;
-  font-family: var(--fonte-num);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/*
+ * O logotipo é um botão. Nada de aparência de botão — mas com afordância: o
+ * cursor muda, a marca clareia no hover e o foco aparece. Elemento clicável
+ * que não se anuncia como clicável é elemento que ninguém clica.
+ */
+.cabecalho__logo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 8px;
+  margin-left: -8px;
+  border: none;
+  border-radius: var(--raio-pequeno);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background var(--transicao);
+}
+
+.cabecalho__logo:hover,
+.cabecalho__logo:focus-visible {
+  background: var(--superficie-forte);
+}
+
+.cabecalho__logo:hover .cabecalho__marca {
+  color: #7fe3ef;
+}
+
+.cabecalho__logo:active {
+  transform: translateY(1px);
+}
+
+.cabecalho__marca {
+  font-size: 1.35rem;
+  font-weight: 800;
+  /* Espaçamento largo o bastante para ler como logotipo, curto o bastante para
+     as letras não se desmancharem. */
+  letter-spacing: 0.14em;
+  /* Cor sólida de propósito: texto com gradiente recortado depende de
+     background-clip, e onde essa propriedade falha o título some da tela. */
+  color: var(--acento);
+}
+
+.cabecalho__subtitulo {
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--texto-fraco);
 }
 
-/* ───────────────────────────── layout do jogo ───────────────────────────── */
+.cabecalho__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ═══════════════════ 3. Tela inicial ═══════════════════ */
+
+.conteudo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(12px, 3vw, 28px);
+}
+
+/*
+ * Duas colunas: à esquerda o convite e a escolha, à direita o tabuleiro que
+ * joga sozinho. Assimétrica de propósito — o conteúdo acionável ocupa a maior
+ * parte, e a demonstração é a companhia, não o assunto.
+ */
+.tela-inicial {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(20px, 4vw, 48px);
+  align-items: center;
+  width: 100%;
+  max-width: 1020px;
+  margin: auto;
+}
+
+.tela-inicial__principal {
+  min-width: 0;
+}
+
+.tela-inicial__titulo {
+  margin-bottom: 10px;
+  font-size: clamp(1.9rem, 5vw, 2.9rem);
+  font-weight: 780;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.tela-inicial__resumo {
+  max-width: 52ch;
+  margin: 0 0 22px;
+  color: var(--texto-suave);
+  font-size: 0.98rem;
+  text-wrap: pretty;
+}
+
+.tela-inicial__entrada {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.campo--nome {
+  flex: 1 1 240px;
+  max-width: 320px;
+}
+
+/* Recorde: o número que o jogador quer bater, tratado como troféu. */
+.recorde {
+  display: flex;
+  flex-direction: column;
+  padding: 9px 16px;
+  border: 1px solid rgba(255, 183, 77, 0.34);
+  border-radius: var(--raio-pequeno);
+  background: rgba(255, 183, 77, 0.09);
+}
+
+.recorde__rotulo {
+  color: var(--texto-fraco);
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.recorde__valor {
+  font-family: var(--fonte-numeros);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--destaque);
+  line-height: 1.15;
+}
+
+.recorde__modo {
+  color: var(--texto-fraco);
+  font-size: 0.74rem;
+}
+
+/* Atalhos para os dois diferenciais do projeto. */
+.tela-inicial__atalhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.atalho {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transicao), background var(--transicao);
+}
+
+.atalho:hover,
+.atalho:focus-visible {
+  border-color: var(--borda-forte);
+  background: var(--superficie);
+}
+
+.atalho__icone {
+  flex-shrink: 0;
+  font-size: 1.3rem;
+}
+
+.atalho__nome {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.atalho__ajuda {
+  display: block;
+  color: var(--texto-fraco);
+  font-size: 0.76rem;
+}
+
+/* A vitrine: o tabuleiro em demonstração. */
+.vitrine {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.vitrine__canvas {
+  display: block;
+  width: 210px;
+  height: 336px;
+  border-radius: var(--raio);
+  /* Proporção 10 colunas por 16 linhas. */
+  aspect-ratio: 10 / 16;
+  box-shadow:
+    var(--sombra),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.vitrine__legenda {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/*
+ * Os modos não são cinco cartões iguais: o primeiro é o clássico e ocupa a
+ * largura toda, os demais dividem a linha abaixo. A grade sozinha diria que
+ * todos pesam o mesmo, e não pesam — quem chega ao jogo começa pela Maratona.
+ */
+.modos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.modos > .modo:first-child {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+}
+
+.modos > .modo:first-child .modo__nome {
+  flex-shrink: 0;
+  font-size: 1.4rem;
+}
+
+.modo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 16px 18px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color var(--transicao),
+    transform var(--transicao),
+    background var(--transicao),
+    box-shadow var(--transicao);
+}
+
+/*
+ * O brilho que atravessa o cartão ao passar o mouse é um elemento próprio, não
+ * um background animado: assim o gradiente não briga com a cor de fundo do
+ * estado hover, e desligar a animação (movimento reduzido) não apaga o cartão.
+ */
+.modo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.07) 50%, transparent 60%);
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1), opacity var(--transicao);
+}
+
+.modo:hover,
+.modo:focus-visible {
+  border-color: var(--acento);
+  background: var(--superficie-forte);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.modo:hover::after,
+.modo:focus-visible::after {
+  transform: translateX(100%);
+  opacity: 1;
+}
+
+.modo:active {
+  transform: translateY(-1px);
+}
+
+.modo__nome {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.modo__descricao {
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+.modo__recorde {
+  margin-top: 4px;
+  color: var(--acento);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ═══════════════════ 4. Área de jogo ═══════════════════ */
 
 .jogo {
-  display: flex;
-  gap: 22px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(120px, 168px) auto minmax(120px, 168px);
+  gap: clamp(10px, 2vw, 22px);
+  align-items: start;
   justify-content: center;
+  margin: auto;
+}
+
+.painel-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/*
+ * As caixas do placar são apoio, não protagonista. Borda quase invisível e
+ * fundo apenas insinuado: quem tem que puxar o olho é o tabuleiro.
+ */
+.caixa {
+  padding: 11px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie);
+}
+
+.caixa--duplo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  text-align: center;
+}
+
+/*
+ * Rótulo de dado, não "eyebrow" decorativo: identifica o número logo abaixo.
+ * O caixa-alta é modesto de propósito — o dado é que precisa ser lido.
+ */
+.caixa__titulo {
+  margin-bottom: 5px;
+  color: var(--texto-fraco);
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.caixa__ajuda {
+  margin: 6px 0 0;
+  color: var(--texto-fraco);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.caixa--placar {
+  text-align: center;
+}
+
+/*
+ * Fonte monoespaçada com tabular-nums: os dígitos não dançam quando o placar
+ * sobe. Num jogo em que o número muda o tempo todo, largura fixa é legibilidade.
+ */
+.placar__valor {
+  margin: 0;
+  font-family: var(--fonte-numeros);
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* A pontuação é o único número que compete com o tabuleiro por atenção. */
+.placar__valor--destaque {
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--acento);
+  line-height: 1.05;
+}
+
+.caixa--pontos {
+  border-color: rgba(77, 208, 225, 0.28);
+  background: var(--acento-fraco);
+}
+
+/* Pulso curto quando a pontuação sobe: confirma o ganho sem atrapalhar. */
+@keyframes pulsoDoPlacar {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+.placar__valor--pulsando {
+  animation: pulsoDoPlacar 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.placar__valor--pequeno {
+  font-size: 1.05rem;
+}
+
+.placar__objetivo {
+  margin: 4px 0 0;
+  color: var(--destaque);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .tabuleiro {
   position: relative;
-  line-height: 0;   /* sem isso o canvas ganha alguns pixels de descida da linha */
-}
-
-#tabuleiro {
-  display: block;
-  border: 2px solid var(--linha);
-  background: #12141c;
-}
-
-/* Camada de aviso: pausa e fim de jogo. */
-.aviso {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(8, 10, 16, 0.86);
-  backdrop-filter: blur(2px);
-  text-align: center;
-  line-height: 1.5;
-  padding: 16px;
-}
-
-.aviso strong {
-  font-size: 22px;
-  letter-spacing: -0.01em;
-}
-
-.aviso span {
-  font-size: 14px;
-  color: var(--texto-fraco);
-  max-width: 24ch;
 }
 
 /*
- * Faixa de recado — aparece durante a jogada e NÃO pode atrapalhar.
- *
- * Fica colada no topo do tabuleiro, onde a pilha quase nunca chega, e some
- * sozinha. Sem fundo escuro cobrindo a área de jogo: o jogador precisa
- * continuar vendo onde a peça está caindo enquanto lê o recado.
+ * O tabuleiro é o assunto da tela, e a sombra funda é o que o levanta do fundo.
+ * O anel de acento fraco fecha a área de jogo sem virar moldura decorativa.
  */
-.faixa {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  padding: 6px 10px;
-  background: rgba(13, 15, 22, 0.88);
-  border: 1px solid var(--destaque);
-  color: var(--texto);
-  font-size: 12.5px;
-  line-height: 1.35;
-  text-align: center;
-  pointer-events: none;   /* nunca rouba um clique do tabuleiro */
+.tabuleiro__canvas {
+  display: block;
+  width: min(46vw, 356px);
+  height: min(92vh, 712px);
+  border-radius: var(--raio);
+  /* O tabuleiro tem 10 colunas por 20 linhas: proporção 1:2 sempre. */
+  aspect-ratio: 1 / 2;
+  box-shadow:
+    var(--sombra-tabuleiro),
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 0 0 5px rgba(0, 0, 0, 0.32);
 }
 
-/* ───────────────────────────── painel lateral ───────────────────────────── */
-
-.painel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 238px;
-  flex: none;
-}
-
-.placar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: var(--linha);
-  border: 1px solid var(--linha);
-}
-
-.placar__item {
-  background: var(--superficie);
-  padding: 9px 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  align-items: center;
-}
-
-.placar__rotulo {
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--texto-fraco);
-}
-
-.placar__valor {
-  font-family: var(--fonte-num);
-  font-size: 19px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;   /* os dígitos não dançam ao mudar */
-}
-
-.caixas {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.caixa,
-.professores,
-.controles {
-  background: var(--superficie);
-  border: 1px solid var(--linha);
-  padding: 10px 11px 11px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.caixa__rotulo {
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--texto-fraco);
-}
-
-.caixa canvas {
+.miniatura {
   display: block;
   width: 100%;
-  height: 58px;
-  background: var(--superficie-2);
+  height: 62px;
 }
 
-/* ───────────────────────────── professores ───────────────────────────── */
-
-.professores__texto {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--texto-fraco);
-  line-height: 1.45;
+.miniatura--menor {
+  height: 44px;
+  opacity: 0.72;
 }
 
-.professores__lista {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.proximas {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
 }
 
-.professores__lista li {
+/* Aviso sobreposto ao tabuleiro (pausa, fim de jogo) */
+/*
+ * Camada de aviso (pausa, fim de partida). O desfoque aqui é funcional, não
+ * decorativo: empurra o tabuleiro para fora de foco enquanto o jogador lê.
+ */
+.aviso {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-sobreposicao);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  border-radius: var(--raio);
+  background: rgba(6, 8, 14, 0.84);
+  backdrop-filter: blur(6px);
+  text-align: center;
+  animation: entradaDoAviso 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * Só a opacidade é animada. Animar backdrop-filter obriga o navegador a
+ * recompor o desfoque a cada quadro — sobre um canvas que já está desenhando
+ * 60 vezes por segundo, é o caminho mais curto para engasgar a partida.
+ */
+@keyframes entradaDoAviso {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.aviso__titulo {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.aviso__detalhe {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.92rem;
+}
+
+.aviso__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* Controles de toque */
+.controles-toque {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.botao-toque {
+  padding: 16px 8px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie-forte);
+  color: var(--texto);
+  font-size: 1.2rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.botao-toque:active {
+  background: var(--acento-escuro);
+}
+
+.botao-toque--largo {
+  grid-column: span 3;
+  font-size: 0.95rem;
+}
+
+/* ═══════════════════ 5. Painéis ═══════════════════ */
+
+.painel {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-painel);
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--texto-fraco);
+  justify-content: center;
+  padding: clamp(8px, 3vw, 28px);
+  background: rgba(4, 6, 12, 0.74);
+  backdrop-filter: blur(5px);
+  animation: aparecer 180ms ease-out;
 }
 
-.professores__disco {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+@keyframes aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.painel__caixa {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--superficie-alta);
+  box-shadow: var(--sombra);
+  animation: entradaDoPainel 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Sobe pouco e para: o painel chega, não salta. */
+@keyframes entradaDoPainel {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.painel__caixa--larga {
+  max-width: 880px;
+}
+
+/* Confirmações curtas não precisam de 560px de largura. */
+.painel__caixa--estreita {
+  max-width: 420px;
+}
+
+.painel__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.painel__cabecalho h2 {
+  font-size: 1.2rem;
+}
+
+.painel__corpo {
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.secao + .secao {
+  margin-top: 26px;
+}
+
+.secao__titulo {
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.secao__texto {
+  margin: 0 0 12px;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.secao--destaque {
+  margin-top: 26px;
+  padding: 16px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: rgba(77, 208, 225, 0.05);
+}
+
+/* Galeria de skins */
+.galeria {
   display: grid;
-  place-items: center;
-  font-family: var(--fonte-num);
-  font-size: 10px;
-  font-weight: 700;
-  color: #12141c;
-  flex: none;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 12px;
 }
 
-/* ───────────────────────────── controles ───────────────────────────── */
-
-.controles__lista {
-  margin: 0;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 3px 10px;
-  font-size: 12.5px;
-}
-
-.controles__lista dt {
-  color: var(--texto-fraco);
-}
-
-.controles__lista dd {
-  margin: 0;
-  font-family: var(--fonte-num);
-  font-size: 12px;
-  text-align: right;
-  color: var(--texto);
-}
-
-/* ───────────────────────────── botão ───────────────────────────── */
-
-.botao {
-  font: inherit;
-  font-size: 13.5px;
-  padding: 9px 12px;
-  background: var(--superficie-2);
-  color: var(--texto);
-  border: 1px solid var(--linha);
+.skin {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie);
+  color: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: border-color var(--transicao), background var(--transicao);
 }
 
-.botao:hover {
-  background: #262d3e;
-  border-color: #3a4256;
+.skin:hover,
+.skin:focus-visible {
+  border-color: var(--borda-forte);
+  background: var(--superficie-forte);
 }
 
-.botao:active {
-  transform: translateY(1px);
+.skin[aria-pressed='true'] {
+  border-color: var(--acento);
+  background: rgba(77, 208, 225, 0.12);
 }
 
-.botao:focus-visible {
-  outline: 2px solid var(--destaque);
-  outline-offset: 2px;
+.skin__previa {
+  display: block;
+  width: 100%;
+  height: 58px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
 }
 
-/* ───────────────────────────── rodapé ───────────────────────────── */
+.skin__nome {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
 
-.rodape {
-  max-width: 62ch;
+.skin__descricao {
+  color: var(--texto-fraco);
+  font-size: 0.74rem;
+}
+
+.skin__remover {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texto-fraco);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.skin__remover:hover {
+  border-color: var(--perigo);
+  color: var(--perigo);
+}
+
+/* Criador de skin com fotos */
+.criador-de-skin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.slot-de-foto {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+  border: 1px dashed var(--borda-forte);
+  border-radius: var(--raio-pequeno);
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: border-color var(--transicao);
+}
+
+.slot-de-foto:hover {
+  border-color: var(--acento);
+}
+
+.slot-de-foto--preenchido {
+  border-style: solid;
+  border-color: var(--acento);
+}
+
+.slot-de-foto__peca {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.slot-de-foto__previa {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.slot-de-foto__vazio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--texto-fraco);
+  font-size: 1.4rem;
+}
+
+/* ── Anúncio da combinação ── */
+
+/*
+ * Fica sobre o tabuleiro durante a desaceleração do tempo. Não recebe cliques:
+ * o jogador continua no controle mesmo com o anúncio na tela.
+ */
+.combo {
+  position: absolute;
+  top: 28%;
+  left: 0;
+  right: 0;
+  z-index: var(--z-sobreposicao);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px;
+  pointer-events: none;
   text-align: center;
 }
 
-.rodape p {
+.combo__professores {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.combo__distintivo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  color: rgba(0, 0, 0, 0.82);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.combo__mais {
+  color: var(--texto);
+  font-size: 1.6rem;
+  font-weight: 300;
+  opacity: 0.7;
+}
+
+.combo__nome {
   margin: 0;
-  font-size: 12.5px;
+  padding: 7px 20px;
+  border-radius: 999px;
+  background: rgba(6, 8, 14, 0.9);
+  font-size: clamp(1.2rem, 4.5vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.combo__detalhe {
+  margin: 0;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(6, 8, 14, 0.82);
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Cada parte entra com seu próprio tempo: os discos primeiro, o nome depois,
+ * o detalhe por último. Tudo entrando junto viraria um bloco que aparece; em
+ * sequência, lê-se como "estes dois se encontraram e isto aconteceu".
+ */
+.combo--entrando .combo__distintivo {
+  animation: comboDistintivo 460ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.combo--entrando .combo__nome {
+  animation: comboNome 420ms cubic-bezier(0.16, 1, 0.3, 1) 160ms backwards;
+}
+
+.combo--entrando .combo__detalhe {
+  animation: comboDetalhe 380ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards;
+}
+
+@keyframes comboDistintivo {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes comboNome {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes comboDetalhe {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Professores especiais ── */
+
+.efeitos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-color: var(--destaque);
+  background: rgba(255, 183, 77, 0.1);
+}
+
+.efeito-ativo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.efeito-ativo__nome {
+  color: var(--destaque);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.efeito-ativo__restante {
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lista-de-professores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
+  gap: 12px;
+}
+
+.professor {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie);
+}
+
+.professor__distintivo {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  color: rgba(0, 0, 0, 0.78);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.professor__distintivo--pequeno {
+  width: 24px;
+  height: 24px;
+  border-width: 1.5px;
+  font-size: 0.72rem;
+}
+
+.professor__distintivo--pequeno + .professor__distintivo--pequeno {
+  margin-left: 5px;
+}
+
+.professor__nome {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.professor__descricao {
+  color: var(--texto-fraco);
+  font-size: 0.78rem;
+}
+
+.situacao-pendente {
+  color: var(--destaque);
+}
+
+/* Estatísticas */
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.cartao {
+  padding: 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie);
+  text-align: center;
+}
+
+.cartao__valor {
+  font-family: var(--fonte-numeros);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cartao__rotulo {
+  margin-top: 2px;
+  color: var(--texto-fraco);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.grafico {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.grafico--menor {
+  height: 178px;
+}
+
+.grade-de-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 26px;
+}
+
+/* Ranking */
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.aba {
+  padding: 7px 14px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  font-size: 0.86rem;
+  transition: all var(--transicao);
+}
+
+.aba[aria-selected='true'] {
+  border-color: var(--acento);
+  background: rgba(77, 208, 225, 0.14);
+  color: var(--acento);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.tabela th,
+.tabela td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--borda);
+  text-align: left;
+}
+
+.tabela th {
+  color: var(--texto-fraco);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tabela td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+
+.tabela tbody tr:hover {
+  background: var(--superficie);
+}
+
+.tabela__posicao {
+  width: 40px;
+  color: var(--texto-fraco);
+  font-weight: 700;
+}
+
+.vazio {
+  padding: 26px;
+  color: var(--texto-fraco);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Análise da IA */
+.analise {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: rgba(77, 208, 225, 0.05);
+}
+
+.analise__titulo {
+  margin-bottom: 6px;
+  font-size: 1.1rem;
+  color: var(--acento);
+}
+
+.analise__resumo {
+  margin: 0 0 14px;
+  color: var(--texto-suave);
+  font-size: 0.92rem;
+}
+
+.analise__nota {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 12px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: var(--superficie-forte);
+  font-weight: 700;
+}
+
+.analise__nota strong {
+  font-size: 1.3rem;
+  color: var(--destaque);
+}
+
+.analise__secao + .analise__secao {
+  margin-top: 16px;
+}
+
+.analise__secao h4 {
+  margin: 0 0 6px;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--texto-fraco);
 }
 
-.rodape code {
-  font-family: var(--fonte-num);
-  font-size: 12px;
+.analise__secao ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.analise__secao li {
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+}
+
+.selo-simulada {
+  display: inline-block;
+  padding: 3px 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--destaque);
+  border-radius: 999px;
+  color: var(--destaque);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+/* Carregando */
+.carregando {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 26px;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.girador {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--borda-forte);
+  border-top-color: var(--acento);
+  border-radius: 50%;
+  animation: girar 700ms linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════ 6. Componentes ═══════════════════ */
+
+.botao {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie-forte);
+  color: var(--texto);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--transicao),
+    border-color var(--transicao),
+    transform var(--transicao),
+    box-shadow var(--transicao);
+}
+
+.botao:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Volta abaixo da posição de repouso: o clique tem que ser sentido. */
+.botao:active:not(:disabled) {
+  transform: translateY(1px);
+  transition-duration: 60ms;
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.botao--primario {
+  border-color: transparent;
+  background: var(--acento);
+  color: #04252a;
+  box-shadow: 0 4px 14px rgba(77, 208, 225, 0.22);
+}
+
+.botao--primario:hover:not(:disabled) {
+  background: #6fdcea;
+  box-shadow: 0 8px 22px rgba(77, 208, 225, 0.32);
+}
+
+.botao--acento {
+  border-color: var(--destaque);
+  background: rgba(255, 183, 77, 0.14);
+  color: var(--destaque);
+}
+
+.botao--acento:hover:not(:disabled) {
+  background: rgba(255, 183, 77, 0.24);
+}
+
+.botao--secundario {
+  background: transparent;
+}
+
+.botao--fechar {
+  padding: 6px 11px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 1.1rem;
+}
+
+.botao--fechar:hover {
   color: var(--texto);
 }
 
-/* ───────────────────────────── telas estreitas ───────────────────────────── */
+.botao--icone {
+  padding: 8px 12px;
+  font-size: 0.86rem;
+}
 
-@media (max-width: 620px) {
-  .jogo {
-    flex-direction: column;
-    align-items: center;
-  }
+.linha-de-botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 
-  .painel {
-    width: 100%;
-    max-width: 320px;
+.linha-de-botoes--centro {
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo label {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.campo input[type='text'] {
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--texto);
+  font-size: 0.95rem;
+}
+
+.campo input[type='text']:focus {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.opcao:last-child {
+  border-bottom: none;
+}
+
+.opcao__texto {
+  flex: 1;
+}
+
+.opcao__rotulo {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.opcao__ajuda {
+  margin: 2px 0 0;
+  color: var(--texto-fraco);
+  font-size: 0.78rem;
+}
+
+.opcao input[type='range'] {
+  width: 130px;
+  accent-color: var(--acento);
+}
+
+.opcao select {
+  padding: 7px 10px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--texto);
+  font-family: inherit;
+}
+
+/* Interruptor */
+.interruptor {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 26px;
+  border: 1px solid var(--borda-forte);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: background var(--transicao);
+}
+
+.interruptor[aria-checked='true'] {
+  background: var(--acento);
+  border-color: var(--acento);
+}
+
+.interruptor::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--texto);
+  transition: transform var(--transicao);
+}
+
+.interruptor[aria-checked='true']::after {
+  transform: translateX(20px);
+  background: #04252a;
+}
+
+.aviso-inline {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-radius: var(--raio-pequeno);
+  font-size: 0.84rem;
+}
+
+.aviso-inline--erro {
+  background: rgba(239, 83, 80, 0.14);
+  color: #ff8a85;
+}
+
+.aviso-inline--sucesso {
+  background: rgba(102, 187, 106, 0.14);
+  color: #8fd694;
+}
+
+.notificacao {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: var(--z-notificacao);
+  padding: 11px 20px;
+  border: 1px solid var(--borda-forte);
+  border-radius: 999px;
+  background: #1d222e;
+  box-shadow: var(--sombra);
+  font-size: 0.88rem;
+  transform: translateX(-50%);
+}
+
+/* ═══════════════════ 7. Acessibilidade ═══════════════════ */
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* Alto contraste: bordas mais fortes e texto puro, ativado nos Ajustes. */
+body.alto-contraste {
+  --texto: #ffffff;
+  --texto-suave: rgba(255, 255, 255, 0.85);
+  --texto-fraco: rgba(255, 255, 255, 0.7);
+  --borda: rgba(255, 255, 255, 0.4);
+  --borda-forte: rgba(255, 255, 255, 0.65);
+  --superficie: rgba(255, 255, 255, 0.1);
+  --superficie-forte: rgba(255, 255, 255, 0.18);
+}
+
+body.alto-contraste .caixa,
+body.alto-contraste .cartao,
+body.alto-contraste .painel__caixa {
+  border-width: 2px;
+}
+
+/*
+ * Movimento reduzido: respeita tanto a preferência do sistema operacional
+ * quanto a chave dos Ajustes. Não é enfeite — para parte das pessoas,
+ * animação em excesso causa desconforto real.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
+body.movimento-reduzido *,
+body.movimento-reduzido *::before,
+body.movimento-reduzido *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Tamanho do tabuleiro, escolhido nos Ajustes. */
+body.tabuleiro-pequeno .tabuleiro__canvas {
+  width: min(36vw, 260px);
+  height: min(74vh, 520px);
+}
+
+body.tabuleiro-grande .tabuleiro__canvas {
+  width: min(56vw, 420px);
+  height: min(96vh, 840px);
+}
+
+/* ═══════════════════ 8. Responsivo ═══════════════════ */
+
+@media (max-width: 900px) {
+  /*
+   * A vitrine é a primeira a sair. Ela é companhia, não conteúdo — em tela
+   * estreita o espaço pertence ao nome, aos modos e aos atalhos.
+   */
+  .tela-inicial {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vitrine {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .botao__rotulo {
+    display: none;
+  }
+
+  .jogo {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .painel-lateral {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 8px;
+  }
+
+  .painel-lateral--esquerda {
+    order: 2;
+  }
+
+  .tabuleiro {
+    order: 1;
+    justify-self: center;
+  }
+
+  .painel-lateral--direita {
+    order: 0;
+  }
+
+  .tabuleiro__canvas {
+    width: min(88vw, 330px);
+    height: auto;
+  }
+
+  .proximas {
+    flex-direction: row;
+  }
+
+  .miniatura {
+    height: 46px;
+  }
+
+  .caixa {
+    padding: 9px;
+  }
+
+  .placar__valor {
+    font-size: 1.2rem;
+  }
+
+  .placar__valor--destaque {
+    font-size: 1.4rem;
+  }
+
+  #botao-pausa {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .cabecalho {
+    padding: 10px 12px;
+  }
+
+  /*
+   * Em tela estreita o cartão em destaque volta a empilhar. Lado a lado, o
+   * nome grande e a descrição disputam os mesmos 300 pixels e as duas colunas
+   * ficam apertadas demais para valer o destaque.
+   */
+  .modos > .modo:first-child {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    padding: 16px 18px;
+  }
+
+  .modos > .modo:first-child .modo__nome {
+    font-size: 1.2rem;
+  }
+
+  .cabecalho__subtitulo {
+    display: none;
+  }
+
+  .painel__corpo {
+    padding: 14px;
+  }
+
+  .grafico {
+    height: 180px;
+  }
+}
+
+/* Telas baixas e deitadas: o tabuleiro precisa caber na altura, não na largura. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .tabuleiro__canvas {
+    width: auto;
+    height: min(80vh, 480px);
   }
 }

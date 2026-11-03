@@ -1,112 +1,375 @@
 <!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tetris dos Professores — Protótipo</title>
-  <meta name="description" content="Protótipo jogável do Projeto Integrador: mecânica central do Tetris com blocos de professor.">
-  <link rel="stylesheet" href="styles/main.css">
-</head>
-<body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Tetris — Projeto Integrador</title>
+    <meta
+      name="description"
+      content="Jogo estilo Tetris com catálogo de skins trocáveis, estatísticas e análise de desempenho."
+    />
+    <meta name="theme-color" content="#12141c" />
 
-  <!--
-    ESTA É A ENTREGA 2 — PROTÓTIPO.
+    <!-- PWA: permite instalar o jogo e jogar offline -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icons/icone.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/icone-192.png" />
 
-    O enunciado pede "apenas a mecânica central, funcionando de forma mínima e
-    jogável", com "elementos gráficos simples (placeholders, formas geométricas
-    ou textos)". Esta página é exatamente isso: um tabuleiro, três números e as
-    duas caixas que o jogador precisa ver para decidir a jogada.
+    <link rel="stylesheet" href="styles/main.css" />
+  </head>
 
-    Menu, skins, som, partículas e análise entram no PI 3 e no PI 4.
-  -->
+  <body>
+    <!-- Atalho para quem navega por teclado pular direto ao jogo -->
+    <a class="pular-para-conteudo" href="#area-de-jogo">Pular para o jogo</a>
 
-  <header class="cabecalho">
-    <h1>Tetris dos Professores</h1>
-    <p class="cabecalho__nota">Protótipo · PI 2 · mecânica central</p>
-  </header>
+    <header class="cabecalho">
+      <h1 class="cabecalho__titulo">
+        <!--
+          O logotipo é um botão de verdade, não um h1 com onclick: recebe foco
+          pelo teclado, responde a Enter e Espaço, e é anunciado como botão.
+        -->
+        <button type="button" class="cabecalho__logo" id="botao-inicio">
+          <span class="cabecalho__marca">TETRIS</span>
+          <span class="cabecalho__subtitulo">Projeto Integrador</span>
+        </button>
+      </h1>
 
-  <main class="jogo">
+      <nav class="cabecalho__acoes" aria-label="Menu principal">
+        <button type="button" class="botao botao--icone" data-abrir="painel-professores" title="Professores">
+          <span aria-hidden="true">🎓</span><span class="botao__rotulo">Professores</span>
+        </button>
+        <button type="button" class="botao botao--icone" data-abrir="painel-skins" title="Skins">
+          <span aria-hidden="true">🎨</span><span class="botao__rotulo">Skins</span>
+        </button>
+        <button type="button" class="botao botao--icone" data-abrir="painel-ranking" title="Ranking">
+          <span aria-hidden="true">🏆</span><span class="botao__rotulo">Ranking</span>
+        </button>
+        <button type="button" class="botao botao--icone" data-abrir="painel-config" title="Configurações">
+          <span aria-hidden="true">⚙️</span><span class="botao__rotulo">Ajustes</span>
+        </button>
+      </nav>
+    </header>
 
-    <section class="tabuleiro" aria-label="Tabuleiro">
-      <canvas id="tabuleiro" width="300" height="600"></canvas>
+    <main class="conteudo">
+      <!-- ═══════════════════════ TELA INICIAL ═══════════════════════ -->
+      <section class="tela-inicial" id="tela-inicial" aria-labelledby="titulo-inicial">
+        <!-- Coluna da esquerda: o convite e a escolha -->
+        <div class="tela-inicial__principal">
+          <h2 id="titulo-inicial" class="tela-inicial__titulo">
+            Encaixe peças.<br />Chame os professores.
+          </h2>
+          <p class="tela-inicial__resumo">
+            Um Tetris completo com rotação SRS, cinco modos e peças que você pode trocar pelas
+            fotos que quiser — inclusive no meio da partida.
+          </p>
 
-      <!--
-        O atributo `hidden` é ligado e desligado pelo JavaScript.
-        O CSS deste projeto tem `[hidden] { display: none !important }` por um
-        motivo concreto: sem o `!important`, qualquer regra com `display` vence
-        o atributo e o aviso fica permanentemente por cima do tabuleiro.
-      -->
-      <div class="aviso" id="aviso" hidden>
-        <strong id="aviso-titulo">Pausado</strong>
-        <span id="aviso-texto">Pressione P para continuar</span>
-      </div>
+          <div class="tela-inicial__entrada">
+            <div class="campo campo--nome">
+              <label for="entrada-nome">Seu nome</label>
+              <input
+                type="text"
+                id="entrada-nome"
+                maxlength="24"
+                placeholder="Como quer aparecer no ranking?"
+                autocomplete="nickname"
+              />
+            </div>
 
-      <!--
-        Faixa de recado, separada do aviso de propósito.
+            <!-- Preenchido por MenuScreen.js quando há recorde registrado -->
+            <div class="recorde" id="recorde-em-destaque" hidden>
+              <span class="recorde__rotulo">Seu recorde</span>
+              <strong class="recorde__valor" id="recorde-valor"></strong>
+              <span class="recorde__modo" id="recorde-modo"></span>
+            </div>
+          </div>
 
-        As duas coisas parecem iguais e não são: o AVISO interrompe a partida e
-        por isso pode escurecer o tabuleiro; a FAIXA acontece no meio da jogada,
-        e escurecer a tela a cada três peças tornaria o jogo injogável.
-      -->
-      <div class="faixa" id="faixa" hidden aria-live="polite"></div>
-    </section>
+          <div class="modos" id="lista-de-modos" role="group" aria-label="Modos de jogo">
+            <!-- Preenchido por MenuScreen.js a partir de core/GameModes.js -->
+          </div>
 
-    <aside class="painel">
-
-      <div class="placar">
-        <div class="placar__item">
-          <span class="placar__rotulo">Pontos</span>
-          <strong class="placar__valor" id="pontos">0</strong>
+          <div class="tela-inicial__atalhos">
+            <button type="button" class="atalho" data-abrir="painel-professores">
+              <span class="atalho__icone" aria-hidden="true">🎓</span>
+              <span>
+                <span class="atalho__nome">Professores especiais</span>
+                <span class="atalho__ajuda">15 combinações de poderes</span>
+              </span>
+            </button>
+            <button type="button" class="atalho" data-abrir="painel-skins">
+              <span class="atalho__icone" aria-hidden="true">🎨</span>
+              <span>
+                <span class="atalho__nome">Peças com suas fotos</span>
+                <span class="atalho__ajuda">Troca em tempo real</span>
+              </span>
+            </button>
+          </div>
         </div>
-        <div class="placar__item">
-          <span class="placar__rotulo">Linhas</span>
-          <strong class="placar__valor" id="linhas">0</strong>
+
+        <!--
+          Coluna da direita: um tabuleiro jogando sozinho, como os fliperamas
+          faziam na tela de espera. Usa o MESMO renderizador da partida real —
+          é a arquitetura desacoplada aparecendo na tela de abertura.
+        -->
+        <aside class="vitrine" aria-hidden="true">
+          <canvas class="vitrine__canvas" id="canvas-vitrine"></canvas>
+          <p class="vitrine__legenda">Demonstração</p>
+        </aside>
+      </section>
+
+      <!-- ═══════════════════════ ÁREA DE JOGO ═══════════════════════ -->
+      <section class="jogo" id="area-de-jogo" hidden aria-label="Área de jogo">
+        <!-- Coluna esquerda: reserva e informações -->
+        <aside class="painel-lateral painel-lateral--esquerda">
+          <div class="caixa">
+            <h3 class="caixa__titulo">Reserva</h3>
+            <canvas class="miniatura" id="canvas-reserva" aria-label="Peça guardada"></canvas>
+            <p class="caixa__ajuda">Tecla C</p>
+          </div>
+
+          <div class="caixa caixa--placar">
+            <h3 class="caixa__titulo">Modo</h3>
+            <p class="placar__valor placar__valor--pequeno" id="hud-modo">Maratona</p>
+            <p class="placar__objetivo" id="hud-objetivo" hidden></p>
+          </div>
+
+          <div class="caixa caixa--placar">
+            <h3 class="caixa__titulo">Tempo</h3>
+            <p class="placar__valor" id="hud-tempo">0:00.0</p>
+          </div>
+
+          <!-- Efeitos de professor valendo agora; só aparece no modo Professores -->
+          <div class="caixa efeitos" id="hud-efeitos" hidden aria-live="polite"></div>
+        </aside>
+
+        <!-- Centro: tabuleiro -->
+        <div class="tabuleiro">
+          <canvas
+            id="canvas-tabuleiro"
+            class="tabuleiro__canvas"
+            role="img"
+            aria-label="Tabuleiro do jogo"
+          ></canvas>
+
+          <!-- Aviso sobreposto: pausa, fim de jogo, contagem regressiva -->
+          <div class="aviso" id="aviso" hidden>
+            <h2 class="aviso__titulo" id="aviso-titulo"></h2>
+            <p class="aviso__detalhe" id="aviso-detalhe"></p>
+            <div class="aviso__acoes" id="aviso-acoes"></div>
+          </div>
+
+          <!--
+            Anúncio da combinação de professores. Fica sobre o tabuleiro e não
+            recebe cliques (pointer-events: none), para nunca atrapalhar o jogo.
+          -->
+          <div class="combo" id="combo" hidden aria-live="polite">
+            <div class="combo__professores" id="combo-professores"></div>
+            <p class="combo__nome" id="combo-nome"></p>
+            <p class="combo__detalhe" id="combo-detalhe"></p>
+          </div>
         </div>
-        <div class="placar__item">
-          <span class="placar__rotulo">Nível</span>
-          <strong class="placar__valor" id="nivel">1</strong>
+
+        <!-- Coluna direita: placar e próximas peças -->
+        <aside class="painel-lateral painel-lateral--direita">
+          <div class="caixa caixa--placar caixa--pontos">
+            <h3 class="caixa__titulo">Pontos</h3>
+            <p class="placar__valor placar__valor--destaque" id="hud-pontos">0</p>
+          </div>
+
+          <div class="caixa caixa--duplo">
+            <div>
+              <h3 class="caixa__titulo">Linhas</h3>
+              <p class="placar__valor" id="hud-linhas">0</p>
+            </div>
+            <div>
+              <h3 class="caixa__titulo">Nível</h3>
+              <p class="placar__valor" id="hud-nivel">1</p>
+            </div>
+          </div>
+
+          <div class="caixa">
+            <h3 class="caixa__titulo">Próximas</h3>
+            <div class="proximas" id="proximas">
+              <canvas class="miniatura" aria-label="Próxima peça"></canvas>
+              <canvas class="miniatura miniatura--menor" aria-label="Segunda peça"></canvas>
+              <canvas class="miniatura miniatura--menor" aria-label="Terceira peça"></canvas>
+            </div>
+          </div>
+
+          <button type="button" class="botao botao--secundario" id="botao-pausa">
+            Pausar <kbd>P</kbd>
+          </button>
+        </aside>
+
+        <!-- Controles de toque: só aparecem em aparelhos com tela sensível -->
+        <div class="controles-toque" id="controles-toque" hidden aria-label="Controles de toque">
+          <button type="button" class="botao-toque" data-comando="girarAntiHorario" aria-label="Girar anti-horário">↺</button>
+          <button type="button" class="botao-toque" data-comando="esquerda" aria-label="Mover para a esquerda">←</button>
+          <button type="button" class="botao-toque" data-comando="softDrop" aria-label="Descer">↓</button>
+          <button type="button" class="botao-toque" data-comando="direita" aria-label="Mover para a direita">→</button>
+          <button type="button" class="botao-toque" data-comando="girarHorario" aria-label="Girar horário">↻</button>
+          <button type="button" class="botao-toque botao-toque--largo" data-comando="hardDrop" aria-label="Queda instantânea">⤓ Soltar</button>
+          <button type="button" class="botao-toque" data-comando="guardar" aria-label="Guardar peça">⇄</button>
+          <button type="button" class="botao-toque" data-comando="pausa" aria-label="Pausar">⏸</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- ═══════════════════════ PAINÉIS ═══════════════════════ -->
+
+    <!-- Catálogo de skins -->
+    <div class="painel" id="painel-skins" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-skins">
+      <div class="painel__caixa">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-skins">Catálogo de skins</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
+
+        <div class="painel__corpo">
+          <section class="secao">
+            <h3 class="secao__titulo">Aparência das peças</h3>
+            <div class="galeria" id="galeria-pecas"><!-- SkinGallery.js --></div>
+          </section>
+
+          <section class="secao">
+            <h3 class="secao__titulo">Plano de fundo</h3>
+            <div class="galeria galeria--fundos" id="galeria-fundos"><!-- SkinGallery.js --></div>
+          </section>
+
+          <section class="secao secao--destaque">
+            <h3 class="secao__titulo">Criar skin com suas fotos</h3>
+            <p class="secao__texto">
+              Escolha uma imagem para cada peça. Elas são recortadas em quadrado, reduzidas para
+              128×128 e ficam salvas neste navegador — nada é enviado para lugar nenhum.
+            </p>
+
+            <div class="criador-de-skin" id="criador-de-skin"><!-- SkinGallery.js --></div>
+
+            <div class="campo">
+              <label for="nome-da-skin">Nome da skin</label>
+              <input type="text" id="nome-da-skin" maxlength="32" placeholder="Ex.: Turma de 2026" />
+            </div>
+
+            <div class="linha-de-botoes">
+              <button type="button" class="botao botao--primario" id="botao-salvar-skin" disabled>
+                Salvar e usar
+              </button>
+              <button type="button" class="botao botao--secundario" id="botao-limpar-fotos">
+                Limpar fotos
+              </button>
+            </div>
+            <p class="aviso-inline" id="aviso-skin" hidden></p>
+          </section>
         </div>
       </div>
+    </div>
 
-      <div class="caixas">
-        <div class="caixa">
-          <span class="caixa__rotulo">Próxima</span>
-          <canvas id="proxima" width="96" height="72"></canvas>
+    <!-- Ranking -->
+    <div class="painel" id="painel-ranking" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-ranking">
+      <div class="painel__caixa painel__caixa--larga">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-ranking">Ranking</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
+
+        <div class="painel__corpo">
+          <div class="abas" id="abas-ranking" role="tablist"><!-- preenchido pelo JS --></div>
+          <div id="tabela-ranking"><!-- preenchido pelo JS --></div>
+
         </div>
-        <div class="caixa">
-          <span class="caixa__rotulo">Reserva</span>
-          <canvas id="reserva" width="96" height="72"></canvas>
+      </div>
+    </div>
+
+    <!-- Confirmação de saída da partida -->
+    <div class="painel" id="painel-sair" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-sair">
+      <div class="painel__caixa painel__caixa--estreita">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-sair">Sair da partida?</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
+
+        <div class="painel__corpo">
+          <p class="secao__texto" id="texto-sair">
+            A partida em andamento será perdida e não entra no ranking.
+          </p>
+
+          <div class="linha-de-botoes linha-de-botoes--centro">
+            <button type="button" class="botao botao--primario" id="botao-continuar-jogando">
+              Continuar jogando
+            </button>
+            <button type="button" class="botao botao--secundario" id="botao-confirmar-sair">
+              Sair para o menu
+            </button>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="professores">
-        <span class="caixa__rotulo">Professores</span>
-        <p class="professores__texto">
-          Alguns blocos nascem marcados. Encoste dois deles lado a lado
-          — nunca na diagonal — e os dois somem, explodindo a área ao redor.
-        </p>
-        <ul class="professores__lista" id="professores-lista"></ul>
+    <!-- Legenda dos professores e das combinações -->
+    <div class="painel" id="painel-professores" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-professores">
+      <div class="painel__caixa painel__caixa--larga">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-professores">Professores Especiais</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
+
+        <div class="painel__corpo">
+          <p class="secao__texto">
+            No modo <strong>Professores</strong>, algumas peças trazem um professor. Quando dois
+            deles ficam encostados — na horizontal ou na vertical, nunca na diagonal — ambos somem
+            e um poder especial é disparado.
+          </p>
+
+          <section class="secao">
+            <h3 class="secao__titulo">Os cinco professores</h3>
+            <div class="lista-de-professores" id="lista-de-professores"></div>
+          </section>
+
+          <section class="secao">
+            <h3 class="secao__titulo">Combinações</h3>
+            <div id="tabela-de-combinacoes"></div>
+          </section>
+        </div>
       </div>
+    </div>
 
-      <div class="controles">
-        <span class="caixa__rotulo">Controles</span>
-        <dl class="controles__lista" id="controles-lista"></dl>
+    <!-- Configurações e acessibilidade -->
+    <div class="painel" id="painel-config" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-config">
+      <div class="painel__caixa">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-config">Ajustes</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
+
+        <div class="painel__corpo" id="corpo-config"><!-- SettingsPanel.js --></div>
       </div>
+    </div>
 
-      <button class="botao" id="reiniciar" type="button">Reiniciar partida (R)</button>
+    <!-- Fim de partida -->
+    <div class="painel" id="painel-fim" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-fim">
+      <div class="painel__caixa painel__caixa--larga">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-fim">Fim de partida</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
 
-    </aside>
+        <div class="painel__corpo">
+          <div class="cartoes" id="cartoes-resultado"></div>
 
-  </main>
+          <div class="linha-de-botoes linha-de-botoes--centro">
+            <button type="button" class="botao botao--primario" id="botao-jogar-de-novo">
+              Jogar de novo
+            </button>
+            <button type="button" class="botao botao--secundario" id="botao-voltar-menu">
+              Trocar de modo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-  <footer class="rodape">
-    <p>
-      Projeto Integrador de Games · Entrega 2 — protótipo.
-      Núcleo com <strong>92 testes automatizados</strong>: rode <code>npm test</code>.
-    </p>
-  </footer>
+    <!-- Mensagens curtas de retorno (salvo, erro, importado) -->
+    <div class="notificacao" id="notificacao" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="src/main.js"></script>
-
-</body>
+    <script type="module" src="src/main.js"></script>
+  </body>
 </html>
