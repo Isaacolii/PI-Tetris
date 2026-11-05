@@ -61,9 +61,11 @@ function relatorioVazio(id, nome) {
 function removerArea(grid, linhaInicial, colunaInicial, altura, largura, relatorio) {
   for (let l = linhaInicial; l < linhaInicial + altura; l++) {
     for (let c = colunaInicial; c < colunaInicial + largura; c++) {
+      // Lê o tipo ANTES de remover: depois a célula já é null.
+      const tipo = grid.celulas[l]?.[c] ?? null;
       if (grid.removerBloco(l, c)) {
         relatorio.blocosRemovidos++;
-        relatorio.celulas.push({ linha: l, coluna: c });
+        relatorio.celulas.push({ linha: l, coluna: c, tipo });
       }
     }
   }
@@ -73,9 +75,10 @@ function removerArea(grid, linhaInicial, colunaInicial, altura, largura, relator
 function removerLinhaInteira(grid, linha, relatorio) {
   if (linha < 0 || linha >= grid.totalDeLinhas) return;
   for (let coluna = 0; coluna < grid.colunas; coluna++) {
+    const tipo = grid.celulas[linha]?.[coluna] ?? null;
     if (grid.removerBloco(linha, coluna)) {
       relatorio.blocosRemovidos++;
-      relatorio.celulas.push({ linha, coluna });
+      relatorio.celulas.push({ linha, coluna, tipo });
     }
   }
   relatorio.linhasAtingidas.push(linha);
@@ -85,9 +88,10 @@ function removerLinhaInteira(grid, linha, relatorio) {
 function removerColunaInteira(grid, coluna, relatorio) {
   if (coluna < 0 || coluna >= grid.colunas) return;
   for (let linha = 0; linha < grid.totalDeLinhas; linha++) {
+    const tipo = grid.celulas[linha]?.[coluna] ?? null;
     if (grid.removerBloco(linha, coluna)) {
       relatorio.blocosRemovidos++;
-      relatorio.celulas.push({ linha, coluna });
+      relatorio.celulas.push({ linha, coluna, tipo });
     }
   }
   relatorio.colunasAtingidas.push(coluna);
@@ -255,7 +259,11 @@ function varreduraHorizontal(grid, ponto) {
   for (let coluna = 0; coluna < grid.colunas; coluna++) {
     if (grid.celulas[melhorLinha][coluna] !== null) {
       relatorio.blocosRemovidos++;
-      relatorio.celulas.push({ linha: melhorLinha, coluna });
+      relatorio.celulas.push({
+        linha: melhorLinha,
+        coluna,
+        tipo: grid.celulas[melhorLinha][coluna],
+      });
     }
   }
 
@@ -368,16 +376,56 @@ const PODERES_INDIVIDUAIS = {
  * A chave é sempre ordenada (ver `chaveDoPar`), então A+B e B+A caem aqui.
  */
 const COMBINACOES = {
-  'A|B': { nome: 'Explosão Horizontal', executar: explosaoHorizontal },
-  'A|C': { nome: 'Explosão Vertical', executar: explosaoVertical },
-  'A|D': { nome: 'Blocos-Bomba', executar: blocosBomba },
-  'A|E': { nome: 'Explosão Lenta', executar: explosaoLenta },
-  'B|C': { nome: 'Cruz Acadêmica', executar: cruzAcademica },
-  'B|D': { nome: 'Linha Coringa', executar: linhaCoringa },
-  'B|E': { nome: 'Varredura Horizontal', executar: varreduraHorizontal },
-  'C|D': { nome: 'Coluna Coringa', executar: colunaCoringa },
-  'C|E': { nome: 'Queda Controlada', executar: quedaControlada },
-  'D|E': { nome: 'Reorganização', executar: reorganizacao },
+  'A|B': {
+    nome: 'Explosão Horizontal',
+    descricao: 'Apaga duas linhas inteiras',
+    executar: explosaoHorizontal,
+  },
+  'A|C': {
+    nome: 'Explosão Vertical',
+    descricao: 'Apaga duas colunas inteiras',
+    executar: explosaoVertical,
+  },
+  'A|D': {
+    nome: 'Blocos-Bomba',
+    descricao: 'Planta 4 bombas nos blocos vizinhos',
+    executar: blocosBomba,
+  },
+  'A|E': {
+    nome: 'Explosão Lenta',
+    descricao: 'Explode 3×3 e deixa as peças mais lentas',
+    executar: explosaoLenta,
+  },
+  'B|C': {
+    nome: 'Cruz Acadêmica',
+    descricao: 'Apaga duas linhas e duas colunas, em cruz',
+    executar: cruzAcademica,
+  },
+  'B|D': {
+    nome: 'Linha Coringa',
+    descricao: 'Preenche os vazios da linha',
+    executar: linhaCoringa,
+  },
+  'B|E': {
+    nome: 'Varredura Horizontal',
+    descricao: 'Apaga a linha mais cheia do tabuleiro',
+    executar: varreduraHorizontal,
+  },
+  'C|D': {
+    nome: 'Coluna Coringa',
+    descricao: 'Tapa os buracos de uma coluna',
+    executar: colunaCoringa,
+  },
+  'C|E': {
+    nome: 'Queda Controlada',
+    descricao: 'As 3 próximas peças caem a 40% da velocidade',
+    executar: quedaControlada,
+  },
+  'D|E': {
+    nome: 'Reorganização',
+    descricao: 'Compacta a pilha e os buracos somem',
+    executar: reorganizacao,
+  },
 };
 
 /**
@@ -400,7 +448,12 @@ const PREVISTAS_PARA_DEPOIS = {};
 export function poderDoPar(primeiro, segundo) {
   // Professores iguais compartilham uma única regra.
   if (primeiro === segundo) {
-    return { nome: 'Aula Dobrada', executar: auladobrada, implementado: true };
+    return {
+      nome: 'Aula Dobrada',
+      descricao: 'Explode um quadrado 3×3 ao redor do encontro',
+      executar: auladobrada,
+      implementado: true,
+    };
   }
 
   const chave = chaveDoPar(primeiro, segundo);
@@ -410,6 +463,7 @@ export function poderDoPar(primeiro, segundo) {
   const previsto = PREVISTAS_PARA_DEPOIS[chave];
   return {
     nome: previsto ?? 'Aula Dobrada',
+    descricao: 'Explode um quadrado 3×3 ao redor do encontro',
     executar: auladobrada,
     implementado: false,
   };
@@ -431,6 +485,7 @@ export function executarPoder(grid, primeiro, segundo, ponto) {
   return {
     ...relatorio,
     nome: poder.nome,
+    descricao: poder.descricao ?? '',
     professores: [primeiro, segundo],
     implementado: poder.implementado,
     ponto,
@@ -456,6 +511,7 @@ export function tabelaDeCombinacoes() {
       par: [primeiro, segundo],
       chave: chaveDoPar(primeiro, segundo),
       nome: poder.nome,
+      descricao: poder.descricao ?? '',
       implementado: poder.implementado,
     };
   });

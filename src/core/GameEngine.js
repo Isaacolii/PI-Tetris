@@ -114,6 +114,20 @@ export class GameEngine {
     this.tempoEncostada = 0;
     this.resetsDeLock = 0;
 
+    /**
+     * Em qual tabuleiro os poderes de combinação agem.
+     *
+     * Num jogo de um jogador é sempre o próprio, e nada muda. No duelo, quem
+     * segura os dois motores aponta este campo para o tabuleiro do adversário
+     * quando o jogador escolhe mirar nele.
+     *
+     * É um campo, não um caminho novo: o motor continua sem saber que existe
+     * um segundo jogador.
+     *
+     * @type {Grid}
+     */
+    this.gridParaPoderes = this.grid;
+
     /** @type {PecaAtiva|null} */
     this.peca = null;
     /** @type {string|null} tipo da peça guardada na reserva */
@@ -334,7 +348,14 @@ export class GameEngine {
    * explosão que remove blocos de professor poderia encadear indefinidamente.
    */
   #resolverPoderes(professoresFixados) {
-    const relatorio = this.professores.resolverAoFixar(this.grid, professoresFixados);
+    // Só a combinação é redirecionável. O poder individual de um professor
+    // levado numa linha age sempre onde ele estava — mandá-lo para o outro
+    // tabuleiro não teria leitura nenhuma para quem assiste.
+    const relatorio = this.professores.resolverAoFixar(
+      this.grid,
+      professoresFixados,
+      this.gridParaPoderes ?? this.grid,
+    );
     if (!relatorio) return;
 
     if (relatorio.colunasAtingidas.length > 0) {
@@ -564,6 +585,15 @@ export class GameEngine {
       professores: this.modo.comProfessores ? this.professores.resumo() : null,
       dataISO: new Date().toISOString(),
     };
+  }
+
+  /**
+   * A bomba que vem na próxima peça, ou null.
+   * Fora do modo Professores é sempre null — lá não existe bomba nenhuma.
+   */
+  marcaDaProxima() {
+    if (!this.modo.comProfessores) return null;
+    return this.professores.espiarMarca();
   }
 
   /** Efeitos valendo agora — o HUD mostra isso ao jogador. */

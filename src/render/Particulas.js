@@ -66,6 +66,7 @@ export class SistemaDeParticulas {
     forca = 1,
     direcao = null,
     abertura = Math.PI * 2,
+    brilho = 0.22,
   }) {
     if (this.particulas.length >= MAXIMO_DE_PARTICULAS) return;
 
@@ -77,27 +78,79 @@ export class SistemaDeParticulas {
           ? Math.random() * Math.PI * 2
           : direcao + (Math.random() - 0.5) * abertura;
 
-      const velocidade = (140 + Math.random() * 300) * forca;
-      const lado = tamanho * (0.1 + Math.random() * 0.16);
+      const velocidade = (150 + Math.random() * 330) * forca;
+      const lado = tamanho * (0.1 + Math.random() * 0.18);
+
+      // Três formas misturadas em vez de só quadrados. Quadrado sozinho lê
+      // como "bloco quebrado"; com círculo e estrela no meio, lê como doce
+      // estourando — que é o efeito pedido.
+      const sorteio = Math.random();
+      const forma = sorteio < 0.45 ? 'quadrado' : sorteio < 0.82 ? 'circulo' : 'estrela';
 
       this.particulas.push({
         x: x + (Math.random() - 0.5) * tamanho * 0.7,
         y: y + (Math.random() - 0.5) * tamanho * 0.7,
         vx: Math.cos(angulo) * velocidade,
-        vy: Math.sin(angulo) * velocidade - 90 * forca, // impulso para cima
+        // Impulso para cima generoso: o estilhaço SOBE antes de cair, e é esse
+        // arco — não a velocidade — que dá a leitura saltitante.
+        vy: Math.sin(angulo) * velocidade - 175 * forca,
         lado,
         cor,
+        forma,
         rotacao: Math.random() * Math.PI,
         velocidadeAngular: (Math.random() - 0.5) * 14,
         vida: 1,
         // Partículas com vidas diferentes evitam que todas sumam no mesmo quadro.
         decaimento: 1 / (0.4 + Math.random() * 0.45),
-        // Só uma minoria brilha. Se todas fossem aditivas, quarenta blocos
-        // explodindo juntos somariam luz até virar uma mancha branca — foi
-        // exatamente o que aconteceu na primeira versão de um Tetris.
-        fagulha: Math.random() < 0.22,
+        /*
+         * Só uma minoria brilha, e QUANTO depende de quem chamou.
+         *
+         * A bomba pede mais fagulha: ela tem um clarão enorme no centro, e
+         * com poucas os estilhaços sumiam dentro da própria luz. A limpeza
+         * de linha pede menos: um Tetris solta quarenta blocos de uma vez,
+         * e a mesma proporção vira macarronada branca sobre o tabuleiro.
+         *
+         * Um número só não serve para os dois — é a quantidade de partículas
+         * que muda, não o gosto.
+         */
+        fagulha: Math.random() < brilho,
+
+        // Fagulha quente: o estilhaço brilhante puxa para o branco-amarelo da
+        // explosão, não para a cor do bloco. É o que separa "faísca" de
+        // "pedaço do bloco voando".
+        corDaFagulha: Math.random() < 0.5 ? '#fff3c4' : '#ffb13d',
       });
     }
+  }
+
+  /**
+   * O estouro da própria célula: ela incha e some.
+   *
+   * ─────────────────────────────────────────────────────────────────────────
+   * É a peça que faltava para a explosão parecer de jogo de combinar doces.
+   *
+   * Antes, o bloco simplesmente sumia e os estilhaços apareciam do nada. O
+   * olho não via o bloco ser destruído — via blocos a menos e sujeira no ar.
+   * Com o estouro, o bloco cresce um instante antes de desaparecer, e aí os
+   * fragmentos têm de onde ter saído.
+   * ─────────────────────────────────────────────────────────────────────────
+   */
+  estourarCelula({ x, y, tamanho, cor }) {
+    if (this.particulas.length >= MAXIMO_DE_PARTICULAS) return;
+
+    this.particulas.push({
+      tipo: 'estouro',
+      x,
+      y,
+      lado: tamanho,
+      cor,
+      vida: 1,
+      decaimento: 1 / 0.26,
+      vx: 0,
+      vy: 0,
+      rotacao: 0,
+      velocidadeAngular: 0,
+    });
   }
 
   /**
@@ -143,7 +196,14 @@ export class SistemaDeParticulas {
     for (const p of this.particulas) {
       p.vida -= p.decaimento * dt;
 
-      if (p.tipo === 'faixa') continue;
+      // Faixa e estouro ficam onde nasceram: só envelhecem.
+      if (p.tipo === 'faixa' || p.tipo === 'estouro') continue;
+
+      // A posição do quadro anterior vira o rastro da fagulha. Guardar é mais
+      // barato e mais fiel do que recalcular a partir da velocidade: já está
+      // com o arrasto e a gravidade aplicados.
+      p.anteriorX = p.x;
+      p.anteriorY = p.y;
 
       p.vy += GRAVIDADE * dt;
       p.vx *= Math.pow(ARRASTO, dt * 60);
@@ -191,36 +251,149 @@ export class SistemaDeParticulas {
       ctx.fillRect(0, p.y, p.largura, p.lado);
     }
 
-    // 2. Fragmentos com a cor do bloco de origem. É o que faz a explosão ser
+    // 2. Estouros das células, ATRÁS dos fragmentos: o bloco incha e os
+    //    estilhaços saem por cima dele.
+    for (const p of this.particulas) {
+      if (p.tipo !== 'estouro') continue;
+      this.#desenharEstouro(ctx, p);
+    }
+
+    // 3. Fragmentos com a cor do bloco de origem. É o que faz a explosão ser
     //    reconhecível: dá para ver de qual peça cada estilhaço saiu.
     for (const p of this.particulas) {
-      if (p.tipo === 'faixa' || p.fagulha) continue;
+      if (p.tipo === 'faixa' || p.tipo === 'estouro' || p.fagulha) continue;
       this.#desenharFragmento(ctx, p);
     }
 
-    // 3. Fagulhas brilhantes, em minoria e por cima.
+    // 4. Fagulhas brilhantes, em minoria e por cima.
     ctx.globalCompositeOperation = 'lighter';
+
+    // 4a. O rastro primeiro: a faísca fica na ponta dele, não dentro.
+    ctx.lineCap = 'round';
     for (const p of this.particulas) {
-      if (p.tipo === 'faixa' || !p.fagulha) continue;
+      if (p.tipo === 'faixa' || p.tipo === 'estouro' || !p.fagulha) continue;
+      if (p.anteriorX === undefined) continue;
+
+      const opacidade = Math.max(0, Math.min(1, p.vida));
+
+      /*
+       * O rastro tem teto.
+       *
+       * Ele nasce da distância percorrida no último quadro, e quadro longo
+       * — aba que volta do segundo plano, máquina engasgando — produzia um
+       * risco atravessando o tabuleiro. Com o teto, um engasgo encurta a
+       * animação em vez de riscar a tela.
+       */
+      const dx = p.x - p.anteriorX;
+      const dy = p.y - p.anteriorY;
+      const distancia = Math.hypot(dx, dy);
+      const teto = p.lado * 3.5;
+      const escala = distancia > teto ? teto / distancia : 1;
+
+      ctx.globalAlpha = opacidade * 0.5;
+      ctx.strokeStyle = p.corDaFagulha ?? p.cor;
+      ctx.lineWidth = p.lado * 0.5 * opacidade;
+      ctx.beginPath();
+      ctx.moveTo(p.x - dx * escala, p.y - dy * escala);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+
+    for (const p of this.particulas) {
+      if (p.tipo === 'faixa' || p.tipo === 'estouro' || !p.fagulha) continue;
       this.#desenharFragmento(ctx, p);
     }
 
     ctx.restore();
   }
 
+  /**
+   * O bloco inchando no instante em que é destruído.
+   * Cresce até quase o dobro e some — nunca encolhe: encolher lê como
+   * "sugado", e o que se quer aqui é "estourou".
+   */
+  #desenharEstouro(ctx, p) {
+    const vida = Math.max(0, Math.min(1, p.vida));
+    const progresso = 1 - vida;
+
+    // Desacelera no fim (saída cúbica): o inchaço é rápido e então segura,
+    // que é o tempo de o olho registrar qual bloco saiu.
+    const avanco = 1 - Math.pow(1 - progresso, 3);
+    const lado = p.lado * (1 + avanco * 0.95);
+    const raio = lado * 0.22;
+
+    ctx.save();
+    ctx.globalAlpha = vida * 0.7;
+    ctx.fillStyle = p.cor;
+    ctx.beginPath();
+    this.#caminhoArredondado(ctx, p.x - lado / 2, p.y - lado / 2, lado, lado, raio);
+    ctx.fill();
+
+    // Contorno branco fino, para o estouro aparecer mesmo sobre um bloco da
+    // mesma cor que ficou atrás.
+    ctx.globalAlpha = vida * 0.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, p.lado * 0.05);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Retângulo de cantos arredondados, sem depender de roundRect. */
+  #caminhoArredondado(ctx, x, y, largura, altura, raio) {
+    const r = Math.min(raio, largura / 2, altura / 2);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + largura - r, y);
+    ctx.quadraticCurveTo(x + largura, y, x + largura, y + r);
+    ctx.lineTo(x + largura, y + altura - r);
+    ctx.quadraticCurveTo(x + largura, y + altura, x + largura - r, y + altura);
+    ctx.lineTo(x + r, y + altura);
+    ctx.quadraticCurveTo(x, y + altura, x, y + altura - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
   #desenharFragmento(ctx, p) {
     const opacidade = Math.max(0, Math.min(1, p.vida));
 
     ctx.globalAlpha = opacidade;
-    ctx.fillStyle = p.cor;
+    ctx.fillStyle = p.fagulha ? (p.corDaFagulha ?? p.cor) : p.cor;
 
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(p.rotacao);
     // Encolhe ao morrer: some por tamanho E por opacidade ao mesmo tempo.
     const lado = p.lado * (0.4 + opacidade * 0.6);
-    ctx.fillRect(-lado / 2, -lado / 2, lado, lado);
+
+    if (p.forma === 'circulo') {
+      ctx.beginPath();
+      ctx.arc(0, 0, lado / 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.forma === 'estrela') {
+      this.#desenharEstrela(ctx, lado / 2);
+    } else {
+      ctx.fillRect(-lado / 2, -lado / 2, lado, lado);
+    }
+
     ctx.restore();
+  }
+
+  /** Estrela de cinco pontas, centrada na origem. */
+  #desenharEstrela(ctx, raio) {
+    const pontas = 5;
+    const interno = raio * 0.45;
+
+    ctx.beginPath();
+    for (let i = 0; i < pontas * 2; i++) {
+      const r = i % 2 === 0 ? raio : interno;
+      const angulo = (i * Math.PI) / pontas - Math.PI / 2;
+      const x = Math.cos(angulo) * r;
+      const y = Math.sin(angulo) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
   }
 
   /** Quantas partículas estão vivas — usado nos testes e na depuração. */

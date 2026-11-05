@@ -43,10 +43,29 @@ export class ProfessorSystem {
 
   reiniciar() {
     this.pecasDesdeOUltimo = 0;
+
+    /**
+     * A bomba da PRÓXIMA peça, já sorteada.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     * Sem isto, o painel "Próximas" não teria o que mostrar.
+     *
+     * O sorteio acontecia no instante em que a peça nascia — e nesse momento
+     * ela já é a peça atual, não mais uma próxima. Decidir uma peça antes faz
+     * a informação existir a tempo de ser mostrada, sem mudar a raridade: a
+     * mesma moeda é jogada, só que um turno mais cedo.
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * @type {string|null}
+     */
+    this.marcaReservada = null;
     /** Quantos poderes já dispararam nesta partida — vira estatística no fim. */
     this.poderesExecutados = 0;
     /** Contagem por combinação, para o relatório de fim de partida. */
     this.historico = [];
+
+    // Já decide a da primeira peça, senão ela nunca poderia vir marcada.
+    this.marcaReservada = this.sortearProfessor();
   }
 
   // ─────────────────────────── Sorteio ───────────────────────────
@@ -69,8 +88,19 @@ export class ProfessorSystem {
   }
 
   /** Marca a peça com um professor sorteado, se for o caso. */
+  /**
+   * Qual bomba virá na próxima peça, ou null.
+   * É o que o painel "Próximas" mostra.
+   */
+  espiarMarca() {
+    return this.marcaReservada;
+  }
+
   prepararPeca(peca) {
-    const professor = this.sortearProfessor();
+    // Usa a que já estava decidida e sorteia a da próxima no mesmo passo.
+    const professor = this.marcaReservada;
+    this.marcaReservada = this.sortearProfessor();
+
     if (!professor) return null;
 
     const totalDeCelulas = peca.celulasOcupadas().length;
@@ -120,19 +150,26 @@ export class ProfessorSystem {
    * @param {{linha: number, coluna: number, professor: string}[]} recemFixados
    * @returns {object|null} relatório do poder executado, ou null se nada aconteceu
    */
-  resolverAoFixar(grid, recemFixados) {
+  resolverAoFixar(grid, recemFixados, gridAlvo = grid) {
     if (!recemFixados || recemFixados.length === 0) return null;
 
+    /*
+     * A DETECÇÃO é sempre no tabuleiro de quem jogou; o EFEITO pode ser noutro.
+     *
+     * No duelo, quando o jogador mira no adversário, só o estrago viaja. Se a
+     * busca pelo par também fosse no tabuleiro do outro, o encontro nunca
+     * seria encontrado — os professores estão aqui, não lá.
+     */
     const par = this.encontrarPar(grid, recemFixados);
     if (!par) return null;
 
-    // Os dois blocos são consumidos ANTES do poder rodar. Assim eles não podem
-    // ser contados de novo, e o poder age sobre um tabuleiro já sem eles.
+    // Os dois blocos são consumidos ANTES do poder rodar, e sempre no tabuleiro
+    // de origem: foi ali que eles se encontraram.
     grid.removerBloco(par.a.linha, par.a.coluna);
     grid.removerBloco(par.b.linha, par.b.coluna);
 
     const ponto = { linha: par.a.linha, coluna: par.a.coluna };
-    const relatorio = executarPoder(grid, par.a.professor, par.b.professor, ponto);
+    const relatorio = executarPoder(gridAlvo, par.a.professor, par.b.professor, ponto);
 
     this.poderesExecutados++;
     this.historico.push({

@@ -101,15 +101,44 @@
 
 html,
 body {
-  height: 100%;
   margin: 0;
+}
+
+html {
+  height: 100%;
+
+  /*
+   * O fundo mora no HTML, nao no BODY, e e preso a janela.
+   *
+   * No BODY ele pintava so a caixa do elemento: com `height: 100%` o body
+   * ficava com a altura exata da janela, entao numa pagina mais alta que a
+   * tela (a lista de modos, o duelo em janela baixa) o gradiente terminava no
+   * meio e o resto da pagina ficava sem fundo nenhum — a emenda horizontal
+   * que aparecia ao trocar de skin.
+   *
+   * `fixed` resolve a raiz: a area de posicionamento passa a ser a janela, de
+   * modo que o gradiente sempre cobre a tela inteira, role quanto rolar, sem
+   * depender da altura do conteudo. A grade tecnica continua repetindo.
+   */
+  background: var(--fundo-pagina);
+  background-attachment: fixed;
+
+  /*
+   * Cor solida por baixo, da MESMA skin.
+   *
+   * O Safari do iPhone trata `fixed` de forma propria e as vezes nao cobre a
+   * tela toda. Se isso acontecer, o que aparece e esta cor — da skin escolhida
+   * — e nao a emenda clara que o bug original deixava.
+   */
+  background-color: var(--fundo-solido);
 }
 
 body {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  background: var(--fundo-pagina);
+  /* O fundo e do HTML: aqui so atrapalharia, tapando-o com uma segunda camada. */
+  background: transparent;
   color: var(--texto);
   font-family: var(--fonte);
   font-size: 16px;
@@ -404,6 +433,27 @@ kbd {
  * largura toda, os demais dividem a linha abaixo. A grade sozinha diria que
  * todos pesam o mesmo, e não pesam — quem chega ao jogo começa pela Maratona.
  */
+/*
+ * Os modos vêm em grupos nomeados: um jogador e dois jogadores.
+ * Sem o título, os cartões de duelo pareciam mais um modo solo na mesma fila.
+ */
+.grupo-de-modos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grupo-de-modos + .grupo-de-modos { margin-top: 16px; }
+
+.grupo-de-modos__titulo {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
 .modos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -421,6 +471,28 @@ kbd {
 .modos > .modo:first-child .modo__nome {
   flex-shrink: 0;
   font-size: 1.4rem;
+}
+
+/*
+ * No grupo de dois jogadores os dois cartões pesam igual.
+ * A regra de destaque do primeiro cartão é do grupo solo, onde existe um modo
+ * de entrada óbvio (Maratona); entre os dois formatos de duelo não existe.
+ */
+.modos--duplo {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.modos--duplo > .modo:first-child {
+  grid-column: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 14px 16px;
+}
+
+/* Desfaz também o título ampliado do cartão em destaque. */
+.modos--duplo > .modo:first-child .modo__nome {
+  font-size: 1.15rem;
 }
 
 .modo {
@@ -965,30 +1037,51 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
-  border: 3px solid rgba(255, 255, 255, 0.95);
+  width: 64px;
+  height: 64px;
+  border: 4px solid rgba(255, 255, 255, 0.96);
   border-radius: 50%;
   color: rgba(0, 0, 0, 0.82);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 800;
 }
 
 .combo__mais {
   color: var(--texto);
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 300;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .combo__nome {
   margin: 0;
-  padding: 7px 20px;
+  padding: 9px 26px;
   border-radius: 999px;
-  background: rgba(6, 8, 14, 0.9);
-  font-size: clamp(1.2rem, 4.5vw, 1.75rem);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  background: rgba(6, 8, 14, 0.94);
+  font-size: clamp(1.4rem, 5.2vw, 2.1rem);
   font-weight: 800;
   letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/*
+ * A frase que ensina a combinação.
+ *
+ * É a linha mais importante do anúncio para quem ainda está aprendendo: o
+ * nome "Cruz Acadêmica" não diz nada na primeira vez. Por isso ela é maior
+ * que a linha dos números e vem antes dela.
+ */
+.combo__descricao {
+  margin: 0;
+  max-width: 26ch;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: rgba(6, 8, 14, 0.9);
+  color: var(--texto);
+  font-size: clamp(0.92rem, 3.2vw, 1.05rem);
+  font-weight: 600;
+  line-height: 1.35;
   text-wrap: balance;
 }
 
@@ -1007,33 +1100,144 @@ kbd {
  * o detalhe por último. Tudo entrando junto viraria um bloco que aparece; em
  * sequência, lê-se como "estes dois se encontraram e isto aconteceu".
  */
+/*
+ * Todas as entradas passam do ponto e voltam (curva "back out"). É a
+ * assinatura dos jogos de combinar doces: nada chega parando, tudo chega
+ * batendo e assentando. A curva antiga (0.16, 1, 0.3, 1) freava suave e o
+ * anúncio parecia um aviso de sistema.
+ */
 .combo--entrando .combo__distintivo {
-  animation: comboDistintivo 460ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: comboDistintivo 520ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.combo--entrando .combo__mais {
+  animation: comboMais 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 150ms backwards;
 }
 
 .combo--entrando .combo__nome {
-  animation: comboNome 420ms cubic-bezier(0.16, 1, 0.3, 1) 160ms backwards;
+  animation: comboNome 460ms cubic-bezier(0.34, 1.56, 0.64, 1) 230ms backwards;
+}
+
+.combo--entrando .combo__descricao {
+  animation: comboDetalhe 400ms cubic-bezier(0.34, 1.56, 0.64, 1) 380ms backwards;
 }
 
 .combo--entrando .combo__detalhe {
-  animation: comboDetalhe 380ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards;
+  animation: comboDetalhe 380ms cubic-bezier(0.34, 1.56, 0.64, 1) 500ms backwards;
 }
 
+/* Os dois discos entram girando um contra o outro: lê-se como encontro. */
 @keyframes comboDistintivo {
-  from { opacity: 0; transform: scale(0.4); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.2) rotate(-25deg); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes comboMais {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 0.75; transform: scale(1); }
 }
 
 @keyframes comboNome {
-  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  from { opacity: 0; transform: translateY(14px) scale(0.78); }
   to { opacity: 1; transform: none; }
 }
 
 @keyframes comboDetalhe {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px) scale(0.92); }
   to { opacity: 1; transform: none; }
 }
 
+/*
+ * A frase sob o nome do poder, na tabela de combinações.
+ * Mesma frase do anúncio dentro do jogo — quem leu jogando reconhece aqui.
+ */
+.combinacao__descricao {
+  display: block;
+  margin-top: 2px;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+
+/* ── Bomba ampliada ── */
+
+/*
+ * O distintivo clicável precisa PARECER clicável.
+ * Sem isto, ninguém descobre que dá para ampliar.
+ */
+.distintivo--clicavel {
+  cursor: zoom-in;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.distintivo--clicavel:hover,
+.distintivo--clicavel:focus-visible {
+  transform: scale(1.12);
+  box-shadow: 0 0 14px var(--cor-do-professor, rgba(255, 255, 255, 0.6));
+}
+
+/*
+ * A camada fica acima do painel que a abriu (--z-painel vale 50), senão a
+ * ampliação nasceria por baixo da janela de onde veio.
+ */
+.lupa {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 8, 14, 0.88);
+  backdrop-filter: blur(3px);
+  cursor: zoom-out;
+}
+
+.lupa__caixa {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  max-width: min(92vw, 460px);
+  padding: 16px 18px 20px;
+  border: 2px solid var(--cor-do-professor, var(--linha));
+  border-radius: 14px;
+  background: var(--superficie);
+  cursor: auto;
+  text-align: center;
+}
+
+.lupa__imagem {
+  display: block;
+  width: min(78vw, 400px);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.lupa__nome {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--cor-do-professor, var(--texto));
+}
+
+.lupa__descricao {
+  max-width: 42ch;
+  color: var(--texto-fraco);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.lupa__fechar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
 /* ── Professores especiais ── */
 
 .efeitos {
@@ -1080,6 +1284,7 @@ kbd {
   background: var(--superficie);
 }
 
+
 .professor__distintivo {
   display: inline-flex;
   flex-shrink: 0;
@@ -1103,6 +1308,35 @@ kbd {
 
 .professor__distintivo--pequeno + .professor__distintivo--pequeno {
   margin-left: 5px;
+}
+
+/*
+ * Distintivo com a bomba no lugar da letra.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * A arte é um CUBO isométrico, e cubo não cabe em disco: o recorte redondo
+ * comia justamente os cantos que dizem que aquilo é uma caixa. Daí o quadrado
+ * de cantos arredondados, igual ao que o tabuleiro desenha.
+ *
+ * A borda sai na cor do professor — a mesma que a explosão dele usa — em vez
+ * do branco neutro de antes. Numa tabela com dez linhas de pares, é a borda
+ * colorida que deixa o par legível de relance.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+.distintivo--bomba {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 24%;
+  border-color: var(--cor-do-professor, rgba(255, 255, 255, 0.9));
+  background: #0c0e14;
+}
+
+.distintivo--bomba img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* `cover` recorta a sobra; esticar achataria a perspectiva do cubo. */
+  object-fit: cover;
 }
 
 .professor__nome {
@@ -1588,6 +1822,421 @@ body.alto-contraste .painel__caixa {
  * quanto a chave dos Ajustes. Não é enfeite — para parte das pessoas,
  * animação em excesso causa desconforto real.
  */
+
+/* ══════════════════════ Duelo de dois jogadores ══════════════════════ */
+
+.duelo {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: clamp(10px, 2vw, 24px);
+  align-items: start;
+  justify-items: center;
+  width: 100%;
+  padding: 4px 0 2px;
+}
+
+/*
+ * A barra de ajuste ocupa as três colunas da grade do duelo.
+ * Fica em cima porque é escolha de antes da partida, não durante.
+ */
+.duelo__barra {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: baseline;
+  justify-content: center;
+  padding-bottom: 2px;
+}
+
+.duelo__opcao {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.duelo__dica {
+  font-size: 0.72rem;
+  color: var(--texto-fraco);
+  max-width: 62ch;
+}
+
+/*
+ * O lado de um jogador: cabeçalho em cima, painel AO LADO do tabuleiro.
+ *
+ * Com o painel embaixo, a altura disponível era dividida entre os dois e o
+ * tabuleiro ficava em 47vh — pequeno demais para dois jogadores lerem a pilha
+ * de longe, na mesma tela. Ao lado, o painel ocupa largura (que sobrava) em
+ * vez de altura (que faltava), e o tabuleiro cresce para 72vh.
+ *
+ * Os dados são estreitos por natureza — um número e um rótulo — então uma
+ * coluna de 7rem acomoda todos sem apertar.
+ */
+.duelo__lado {
+  display: grid;
+  grid-template-columns: 8.5rem auto;
+  gap: 6px 8px;
+  align-items: start;
+  width: fit-content;
+  min-width: 0;
+}
+
+.duelo__lado .duelo__cabecalho { grid-column: 1 / -1; }
+
+/*
+ * O lado 2 é espelhado: painel à direita, tabuleiro à esquerda.
+ *
+ * Assim os DOIS tabuleiros ficam encostados na barra de pressão do meio, que
+ * é o que os jogadores olham de relance para saber quanto lixo vem. Com os
+ * dois painéis à esquerda, o tabuleiro 2 ficaria afastado do centro e a
+ * leitura da barra viraria um ziguezague.
+ */
+.duelo__lado--2 { grid-template-columns: auto 8.5rem; }
+.duelo__lado--2 .duelo__cabecalho { justify-content: flex-end; }
+
+/*
+ * Colocacao EXPLICITA, nao automatica.
+ *
+ * Pela ordem do HTML o tabuleiro caia na coluna estreita e, como o canvas tem
+ * largura propria, transbordava por cima do painel: o painel do jogador 1
+ * desaparecia atras do tabuleiro. Dizer a coluna de cada um resolve, e de
+ * quebra permite espelhar o lado 2 sem mexer na ordem do HTML (que e a ordem
+ * em que o leitor de tela anuncia os elementos).
+ */
+.duelo__lado .duelo__painel { grid-column: 1; grid-row: 2; }
+.duelo__lado .duelo__tabuleiro { grid-column: 2; grid-row: 2; justify-self: start; }
+
+.duelo__lado--2 .duelo__painel { grid-column: 2; }
+.duelo__lado--2 .duelo__tabuleiro { grid-column: 1; justify-self: end; }
+
+.duelo__cabecalho {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.duelo__quem {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* A cor é a identidade do jogador: a mesma borda aparece no tabuleiro dele. */
+.duelo__lado--1 .duelo__quem { color: #5ad2f0; }
+.duelo__lado--2 .duelo__quem { color: #ffb74d; }
+
+.duelo__dispositivo {
+  font-size: 0.7rem;
+  color: var(--texto-fraco);
+}
+
+.duelo__tabuleiro {
+  position: relative;
+  border: 2px solid var(--linha);
+  line-height: 0;
+}
+
+.duelo__lado--1 .duelo__tabuleiro { border-color: rgba(90, 210, 240, 0.55); }
+.duelo__lado--2 .duelo__tabuleiro { border-color: rgba(255, 183, 77, 0.55); }
+
+/*
+ * O tabuleiro é medido pela ALTURA da janela, não pela largura.
+ *
+ * Dimensionar por largura dava 600px de altura e empurrava o painel de pontos
+ * para fora da tela — num duelo, a página não pode rolar: os dois jogadores
+ * olham a mesma tela ao mesmo tempo e ninguém rola para ver o próprio placar.
+ *
+ * A proporção 1:2 vem do tabuleiro (10 colunas por 20 linhas) e é declarada,
+ * não calculada: assim a largura acompanha sozinha.
+ */
+.duelo__tabuleiro canvas {
+  display: block;
+  height: min(76vh, 860px);
+  width: auto;
+  aspect-ratio: 1 / 2;
+  /*
+   * O limite de largura é o que impede os dois tabuleiros de se encontrarem no
+   * meio da tela numa janela baixa e larga: 72vh de altura dá 36vh de largura,
+   * que numa tela 21:9 passaria de 30vw.
+   */
+  max-width: 30vw;
+  background: var(--fundo-solido);
+}
+
+/*
+ * Tranco quando o lixo chega.
+ * É curto de propósito: o jogador precisa VER que levou, sem perder de vista
+ * a peça que está caindo.
+ */
+.duelo__tabuleiro--atingido {
+  animation: dueloAtingido 320ms ease-out;
+}
+
+@keyframes dueloAtingido {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  55% { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+
+.duelo__chegando {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(239, 32, 41, 0.92);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.duelo__painel {
+  display: grid;
+  /* Uma coluna: ao lado do tabuleiro a altura é que sobra, não a largura. */
+  grid-template-columns: 1fr;
+  gap: 5px;
+  width: 100%;
+}
+
+.duelo__dado {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px 6px;
+  border: 1px solid var(--linha);
+  background: var(--superficie);
+}
+
+/*
+ * Ao lado do tabuleiro o painel tem UMA coluna, entao nada se estende.
+ * O 'span 2' so volta no telefone, onde o painel desce para duas colunas
+ * (ver a consulta de 760px la embaixo).
+ */
+.duelo__dado--largo { grid-column: auto; }
+
+.duelo__rotulo {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+.duelo__valor {
+  font-family: var(--fonte-num, ui-monospace, monospace);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lixo a caminho é o número que decide a jogada: fica vermelho quando aperta. */
+.duelo__lixo--urgente {
+  border-color: #ef2029;
+  background: rgba(239, 32, 41, 0.14);
+}
+
+.duelo__lixo--urgente .duelo__valor { color: #ff6b6b; }
+
+.duelo__alvo { font-size: 0.85rem; }
+.duelo__alvo--fora { color: #ff6b6b; }
+
+.duelo__proxima {
+  display: block;
+  width: 100%;
+  height: 38px;
+  background: var(--superficie-2, #1d2230);
+}
+
+/* ── tabuleiro compartilhado ── */
+
+
+/*
+ * Nome da combinação, sobre o tabuleiro de quem a fez.
+ *
+ * Fica no RODAPÉ do tabuleiro, e o aviso de lixo no topo: os dois disparam
+ * juntos quando um poder manda lixo, e sobrepostos um esconderia o outro.
+ */
+.duelo__combo {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  padding: 4px 6px;
+  background: rgba(8, 10, 16, 0.78);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  /* A moldura do tabuleiro zera a entrelinha para matar o vao embaixo do
+     canvas; sem repor aqui, a faixa fica com 8px de altura e corta o texto. */
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+  animation: combo-do-duelo 1400ms ease-out both;
+}
+
+@keyframes combo-do-duelo {
+  from { opacity: 0; transform: translateY(8px); }
+  18%  { opacity: 1; transform: translateY(0); }
+  82%  { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.duelo__mesa {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+/*
+ * Bem maior que os de duas telas: aqui só existe UM tabuleiro, e os dois
+ * jogadores olham para ele ao mesmo tempo, de distâncias diferentes. O espaço
+ * que sobrou ao tirar o segundo tabuleiro vai todo para este.
+ */
+.duelo__tabuleiro--mesa canvas {
+  height: min(66vh, 800px);
+  max-width: 44vw;
+}
+
+.duelo__placar-mesa {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.duelo__ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 120px;
+  padding: 6px 12px 7px;
+  border: 1px solid var(--linha);
+  border-top-width: 3px;
+  background: var(--superficie);
+}
+
+.duelo__ficha--1 { border-top-color: #5ad2f0; }
+.duelo__ficha--2 { border-top-color: #ffb74d; }
+.duelo__ficha--risco { border-top-color: var(--linha); justify-content: center; }
+
+/* Eliminado: a ficha apaga, para a plateia ver quem saiu. */
+.duelo__ficha--fora { opacity: 0.42; }
+
+/*
+ * Altura da pilha no tabuleiro compartilhado.
+ *
+ * Substitui a barra de pressão: num tabuleiro só não há "quem está melhor",
+ * há "quanto falta para acabar". É a tensão que os dois compartilham.
+ */
+.duelo__risco {
+  width: 140px;
+  height: 10px;
+  border: 1px solid var(--linha);
+  background: var(--superficie-2, #1d2230);
+}
+
+.duelo__risco span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(to right, #42b642, #f7d308 60%, #ef2029);
+}
+
+/* ── barra de pressão ── */
+
+.duelo__meio {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-top: 34px;
+}
+
+/*
+ * A barra é um gradiente cujo ponto de virada anda.
+ * Quem assiste não precisa saber ler uma pilha de Tetris: vê a cor de um
+ * jogador tomando o espaço do outro.
+ */
+.duelo__pressao {
+  --vantagem: 50%;
+  width: 14px;
+  height: min(47vh, 600px);
+  border: 1px solid var(--linha);
+  background: linear-gradient(
+    to bottom,
+    #5ad2f0 0%,
+    #5ad2f0 var(--vantagem),
+    #ffb74d var(--vantagem),
+    #ffb74d 100%
+  );
+  transition: none;
+}
+
+/* ── camadas de pausa e de fim ── */
+
+.duelo__camada {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-sobreposicao, 50);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 10, 16, 0.88);
+  backdrop-filter: blur(2px);
+  text-align: center;
+  padding: 16px;
+}
+
+.duelo__camada strong { font-size: clamp(1.4rem, 5vw, 2.2rem); font-weight: 800; }
+.duelo__camada span { color: var(--texto-fraco); max-width: 40ch; }
+
+.duelo__botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+
+/*
+ * Abaixo de 760px os dois tabuleiros não cabem lado a lado com tamanho
+ * jogável. O duelo é de teclado e controle compartilhados: não faz sentido
+ * no celular, e tentar espremer só entregaria dois tabuleiros ilegíveis.
+ */
+@media (max-width: 760px) {
+  .duelo { grid-template-columns: 1fr; }
+  .duelo__meio { display: none; }
+  .duelo__tabuleiro canvas { height: min(52vh, 480px); max-width: 80vw; }
+
+  /*
+   * No telefone o painel volta para BAIXO do tabuleiro, em duas colunas.
+   *
+   * Ao lado, a coluna de 7rem roubaria largura do tabuleiro — e numa tela
+   * estreita a largura é exatamente o que falta.
+   */
+  .duelo__lado,
+  .duelo__lado--2 { grid-template-columns: 1fr; }
+  .duelo__lado--2 .duelo__cabecalho { justify-content: flex-start; }
+  .duelo__painel { grid-template-columns: 1fr 1fr; }
+  .duelo__dado--largo { grid-column: span 2; }
+
+  /* Tudo numa coluna so: o automatico volta a servir. */
+  .duelo__lado .duelo__painel,
+  .duelo__lado--2 .duelo__painel { grid-column: 1; grid-row: 3; }
+  .duelo__lado .duelo__tabuleiro,
+  .duelo__lado--2 .duelo__tabuleiro {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

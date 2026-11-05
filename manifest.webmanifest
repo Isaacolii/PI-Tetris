@@ -1,0 +1,38 @@
+{
+  "name": "Tetris — Projeto Integrador",
+  "short_name": "Tetris PI",
+  "description": "Jogo estilo Tetris com catálogo de skins trocáveis, estatísticas e análise de desempenho.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12141c",
+  "theme_color": "#12141c",
+  "lang": "pt-BR",
+  "categories": ["games", "education"],
+  "icons": [
+    {
+      "src": "assets/icons/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

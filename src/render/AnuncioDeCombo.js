@@ -14,7 +14,16 @@
  */
 
 /** Quanto tempo o anúncio fica visível, em milissegundos. */
-const DURACAO_MS = 1250;
+/*
+ * Tempo na tela.
+ *
+ * Era 1250 ms, o bastante para ver o nome e não para LER o que o poder faz.
+ * O anúncio só ensina a combinação se o jogador conseguir ler a frase antes
+ * de ela sumir, e ele está jogando ao mesmo tempo.
+ */
+const DURACAO_MS = 2100;
+
+import { criarDistintivo } from '../ui/DistintivoDeProfessor.js';
 
 export class AnuncioDeCombo {
   /**
@@ -22,7 +31,8 @@ export class AnuncioDeCombo {
    * @param {HTMLElement} elementos.caixa
    * @param {HTMLElement} elementos.professores
    * @param {HTMLElement} elementos.nome
-   * @param {HTMLElement} elementos.detalhe
+   * @param {HTMLElement} elementos.descricao  o que o poder FAZ, em palavras
+   * @param {HTMLElement} elementos.detalhe    os números do que acabou de sair
    * @param {import('./SkinRegistry.js').SkinRegistry} skins
    */
   constructor(elementos, skins) {
@@ -43,6 +53,14 @@ export class AnuncioDeCombo {
 
     this.#montarProfessores(professores);
     this.el.nome.textContent = relatorio.nome ?? '';
+
+    // A frase do que o poder faz vem do próprio poder, não daqui: a legenda
+    // do painel lê a mesma, então as duas nunca divergem.
+    if (this.el.descricao) {
+      this.el.descricao.textContent = relatorio.descricao ?? '';
+      this.el.descricao.hidden = !relatorio.descricao;
+    }
+
     this.el.detalhe.textContent = this.#descrever(relatorio);
 
     caixa.hidden = false;
@@ -83,14 +101,15 @@ export class AnuncioDeCombo {
 
       const visual = this.skins.visualDoProfessor(professor.id);
 
-      const distintivo = document.createElement('span');
-      distintivo.className = 'combo__distintivo';
-      distintivo.style.backgroundColor = visual.cor;
+      // A bomba, não a letra: é o que o jogador acabou de ver no tabuleiro, e
+      // o anúncio só ensina a combinação se mostrar a mesma coisa.
+      const distintivo = criarDistintivo(professor.id, {
+        classe: 'combo__distintivo',
+        rotulo: true,
+      });
+
       // A sombra usa a cor do próprio professor: o brilho identifica quem agiu.
       distintivo.style.boxShadow = `0 0 26px ${visual.cor}`;
-      distintivo.textContent = visual.simbolo;
-      // O nome vai no rótulo acessível; o disco mostra só a letra, por espaço.
-      distintivo.setAttribute('aria-label', professor.nome ?? professor.id);
       // Escalonar a entrada de cada disco dá a leitura de "um encontrou o outro".
       distintivo.style.animationDelay = `${indice * 90}ms`;
 

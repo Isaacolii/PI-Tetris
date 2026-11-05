@@ -97,7 +97,15 @@ export class CanvasRenderer {
    * @param {import('./EfeitoVisual.js').EfeitoVisual} [estado.efeitos]  animações de poder
    * @param {import('./Particulas.js').SistemaDeParticulas} [estado.particulas]
    */
-  desenhar({ grid, peca = null, fantasma = null, efeitos = null, particulas = null }) {
+  desenhar({
+    grid,
+    peca = null,
+    fantasma = null,
+    efeitos = null,
+    particulas = null,
+    pecas = null,
+    fantasmas = null,
+  }) {
     const ctx = this.ctx;
     const area = this.#areaDoTabuleiro();
     const { largura, altura } = area;
@@ -139,11 +147,33 @@ export class CanvasRenderer {
       }
     }
 
-    // 4. Sombra da peça — desenhada antes da peça para ficar por baixo.
-    if (fantasma) this.#pintarPeca(ctx, fantasma, grid.linhasOcultas, { fantasma: true });
+    /*
+     * 4 e 5. Sombras primeiro, peças depois.
+     *
+     * `pecas` existe para o tabuleiro compartilhado, onde DUAS peças caem ao
+     * mesmo tempo. Todas as sombras vão antes de todas as peças: desenhar
+     * sombra-peça, sombra-peça deixaria a sombra do segundo jogador por cima
+     * da peça do primeiro.
+     */
+    const emQueda = pecas ?? (peca ? [peca] : []);
+    const sombras = fantasmas ?? (fantasma ? [fantasma] : []);
 
-    // 5. Peça em queda.
-    if (peca) this.#pintarPeca(ctx, peca, grid.linhasOcultas);
+    for (const sombra of sombras) {
+      if (sombra) this.#pintarPeca(ctx, sombra, grid.linhasOcultas, { fantasma: true });
+    }
+    for (const emJogo of emQueda) {
+      if (!emJogo) continue;
+
+      /*
+       * No tabuleiro compartilhado, cada peça leva um contorno da cor do dono.
+       *
+       * Sem ele o jogador não sabe qual peça é a dele: as duas podem ser do
+       * mesmo tipo, e aí são idênticas. A cor do bloco é do TIPO da peça; a
+       * cor da borda é de QUEM a controla.
+       */
+      const { peca: emFoco, contorno } = emJogo.peca ? emJogo : { peca: emJogo, contorno: null };
+      this.#pintarPeca(ctx, emFoco, grid.linhasOcultas, { contorno });
+    }
 
     // 6b. Animações dos poderes especiais — puramente decorativas: o tabuleiro
     //     já está no estado final quando elas começam.
@@ -220,7 +250,31 @@ export class CanvasRenderer {
 
   /** Pinta todas as células de uma peça, convertendo da linha do grid para a linha visível. */
   #pintarPeca(ctx, peca, linhasOcultas, opcoes = {}) {
-    for (const { linha, coluna, professor } of peca.celulasOcupadas()) {
+    const celulas = peca.celulasOcupadas();
+
+    // O contorno vai POR CIMA de todas as células da peça, depois de pintadas:
+    // desenhar célula a célula deixaria as bordas internas à mostra e a peça
+    // pareceria quatro quadrados soltos em vez de uma peça só.
+    if (opcoes.contorno) {
+      ctx.save();
+      ctx.strokeStyle = opcoes.contorno;
+      ctx.lineWidth = Math.max(2, this.tamanhoDaCelula * 0.12);
+      ctx.lineJoin = 'round';
+
+      for (const { linha, coluna } of celulas) {
+        const linhaVisivel = linha - linhasOcultas;
+        if (linhaVisivel < 0) continue;
+        ctx.strokeRect(
+          coluna * this.tamanhoDaCelula + 1,
+          linhaVisivel * this.tamanhoDaCelula + 1,
+          this.tamanhoDaCelula - 2,
+          this.tamanhoDaCelula - 2,
+        );
+      }
+      ctx.restore();
+    }
+
+    for (const { linha, coluna, professor } of celulas) {
       const linhaVisivel = linha - linhasOcultas;
       // Parte da peça pode estar na faixa de nascimento, acima do tabuleiro visível.
       if (linhaVisivel < 0) continue;

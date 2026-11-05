@@ -73,21 +73,63 @@ class PintorBase {
    * @param {CanvasRenderingContext2D} ctx
    * @param {{cor: string, simbolo: string, imagem: HTMLImageElement|null}} visual
    */
+  /** Retângulo de cantos arredondados, sem depender de roundRect. */
+  #caminhoArredondado(ctx, x, y, largura, altura, raio) {
+    const r = Math.min(raio, largura / 2, altura / 2);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + largura - r, y);
+    ctx.quadraticCurveTo(x + largura, y, x + largura, y + r);
+    ctx.lineTo(x + largura, y + altura - r);
+    ctx.quadraticCurveTo(x + largura, y + altura, x + largura - r, y + altura);
+    ctx.lineTo(x + r, y + altura);
+    ctx.quadraticCurveTo(x, y + altura, x, y + altura - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
   marcarProfessor(ctx, x, y, tamanho, visual) {
     ctx.save();
+
+    if (visual.imagem) {
+      /*
+       * A bomba é um CUBO, e cubo não cabe em recorte redondo.
+       *
+       * A primeira versão recortava a caricatura em círculo, o que fazia
+       * sentido para um rosto. A arte das bombas é um caixote isométrico com
+       * tarjas nas laterais — cortado em círculo, perdiam-se justamente os
+       * cantos que dizem que aquilo é uma caixa.
+       *
+       * Quadrado de cantos arredondados, e quase do tamanho do bloco: num
+       * tabuleiro de células de 30 px, qualquer margem a mais apaga o desenho.
+       */
+      const margem = tamanho * 0.04;
+      const lado = tamanho - margem * 2;
+      const raio = lado * 0.22;
+
+      ctx.save();
+      ctx.beginPath();
+      this.#caminhoArredondado(ctx, x + margem, y + margem, lado, lado, raio);
+      ctx.clip();
+      ctx.drawImage(visual.imagem, x + margem, y + margem, lado, lado);
+      ctx.restore();
+
+      // Contorno na cor do professor: separa a bomba do bloco atrás dela e
+      // repete a cor que a explosão vai usar.
+      ctx.beginPath();
+      this.#caminhoArredondado(ctx, x + margem, y + margem, lado, lado, raio);
+      ctx.strokeStyle = visual.cor;
+      ctx.lineWidth = Math.max(1.5, tamanho * 0.07);
+      ctx.stroke();
+
+      ctx.restore();
+      return;
+    }
 
     const margem = tamanho * 0.16;
     const lado = tamanho - margem * 2;
 
-    if (visual.imagem) {
-      // Caricatura recortada em círculo, para não virar um quadrado dentro de outro.
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x + tamanho / 2, y + tamanho / 2, lado / 2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(visual.imagem, x + margem, y + margem, lado, lado);
-      ctx.restore();
-    } else {
+    {
       // Sem caricatura: disco colorido com a letra do professor.
       ctx.beginPath();
       ctx.arc(x + tamanho / 2, y + tamanho / 2, lado / 2, 0, Math.PI * 2);

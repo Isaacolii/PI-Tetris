@@ -12,6 +12,7 @@
 import { PROFESSORES, IDS_DE_PROFESSOR } from '../core/Professores.js';
 import { tabelaDeCombinacoes } from '../core/PoderesEspeciais.js';
 import { visualDoProfessor } from '../render/skins/catalogo.js';
+import { criarDistintivo } from './DistintivoDeProfessor.js';
 
 export class PainelDeProfessores {
   /**
@@ -29,6 +30,85 @@ export class PainelDeProfessores {
     this.#montarTabela();
   }
 
+  /**
+   * Abre a bomba ampliada.
+   *
+   * A camada é criada uma vez e reaproveitada, e mora no `body` — não dentro
+   * do painel. Dentro dele, o `overflow` da lista de combinações recortaria
+   * a imagem justamente quando ela cresce.
+   *
+   * @param {string} id
+   * @param {HTMLElement} origem  para devolver o foco ao fechar
+   */
+  #abrirLupa(id, origem) {
+    const visual = visualDoProfessor(id);
+    const professor = PROFESSORES[id];
+    if (!visual.ampliada) return;
+
+    const lupa = this.#garantirLupa();
+    this.foco = origem;
+
+    lupa.imagem.src = visual.ampliada;
+    lupa.imagem.alt = `Bomba de ${professor?.nome ?? id}`;
+    lupa.caixa.style.setProperty('--cor-do-professor', visual.cor);
+    lupa.nome.textContent = `${professor?.nome ?? id} — ${professor?.tema ?? ''}`;
+    lupa.descricao.textContent = professor?.descricao ?? '';
+
+    lupa.fundo.hidden = false;
+    lupa.fechar.focus();
+  }
+
+  #fecharLupa() {
+    if (!this.lupa) return;
+    this.lupa.fundo.hidden = true;
+    // Devolve o foco a quem abriu: sem isto, quem usa teclado volta ao topo
+    // da página e perde o lugar na tabela.
+    this.foco?.focus?.();
+  }
+
+  #garantirLupa() {
+    if (this.lupa) return this.lupa;
+
+    const fundo = document.createElement('div');
+    fundo.className = 'lupa';
+    fundo.hidden = true;
+    fundo.setAttribute('role', 'dialog');
+    fundo.setAttribute('aria-modal', 'true');
+
+    const caixa = document.createElement('div');
+    caixa.className = 'lupa__caixa';
+
+    const imagem = document.createElement('img');
+    imagem.className = 'lupa__imagem';
+
+    const nome = document.createElement('strong');
+    nome.className = 'lupa__nome';
+
+    const descricao = document.createElement('span');
+    descricao.className = 'lupa__descricao';
+
+    const fechar = document.createElement('button');
+    fechar.type = 'button';
+    fechar.className = 'botao botao--fechar lupa__fechar';
+    fechar.setAttribute('aria-label', 'Fechar');
+    fechar.textContent = '✕';
+
+    caixa.append(fechar, imagem, nome, descricao);
+    fundo.append(caixa);
+    document.body.append(fundo);
+
+    fechar.addEventListener('click', () => this.#fecharLupa());
+    // Clique no fundo fecha; clique na caixa não — senão fechava ao tentar
+    // olhar a imagem de perto.
+    fundo.addEventListener('click', (e) => { if (e.target === fundo) this.#fecharLupa(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !fundo.hidden) this.#fecharLupa();
+    });
+
+    this.lupa = { fundo, caixa, imagem, nome, descricao, fechar };
+    return this.lupa;
+  }
+
   #montarLista() {
     const destino = this.el.lista;
     if (!destino) return;
@@ -37,16 +117,14 @@ export class PainelDeProfessores {
 
     for (const id of IDS_DE_PROFESSOR) {
       const professor = PROFESSORES[id];
-      const visual = visualDoProfessor(id);
 
       const cartao = document.createElement('div');
       cartao.className = 'professor';
 
-      const distintivo = document.createElement('span');
-      distintivo.className = 'professor__distintivo';
-      distintivo.style.backgroundColor = visual.cor;
-      distintivo.textContent = visual.simbolo;
-      distintivo.setAttribute('aria-hidden', 'true');
+      const distintivo = criarDistintivo(id, {
+        classe: 'professor__distintivo',
+        aoClicar: (quem, elemento) => this.#abrirLupa(quem, elemento),
+      });
 
       const texto = document.createElement('div');
 
@@ -90,15 +168,27 @@ export class PainelDeProfessores {
 
       const par = document.createElement('td');
       for (const id of item.par) {
-        const marca = document.createElement('span');
-        marca.className = 'professor__distintivo professor__distintivo--pequeno';
-        marca.style.backgroundColor = visualDoProfessor(id).cor;
-        marca.textContent = visualDoProfessor(id).simbolo;
-        par.append(marca);
+        par.append(
+          criarDistintivo(id, {
+            classe: 'professor__distintivo professor__distintivo--pequeno',
+            aoClicar: (quem, elemento) => this.#abrirLupa(quem, elemento),
+          }),
+        );
       }
 
       const nome = document.createElement('td');
-      nome.textContent = item.nome;
+      const titulo = document.createElement('strong');
+      titulo.textContent = item.nome;
+      nome.append(titulo);
+
+      // O nome sozinho não ensina nada: "Cruz Acadêmica" não diz o que faz.
+      // A frase vem da mesma tabela que o jogo usa no anúncio da jogada.
+      if (item.descricao) {
+        const explicacao = document.createElement('small');
+        explicacao.className = 'combinacao__descricao';
+        explicacao.textContent = item.descricao;
+        nome.append(explicacao);
+      }
 
       const situacao = document.createElement('td');
       if (item.implementado) {

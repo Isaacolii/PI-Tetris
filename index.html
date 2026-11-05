@@ -41,6 +41,9 @@
         <button type="button" class="botao botao--icone" data-abrir="painel-skins" title="Skins">
           <span aria-hidden="true">🎨</span><span class="botao__rotulo">Skins</span>
         </button>
+        <button type="button" class="botao botao--icone" data-abrir="painel-estatisticas" title="Estatísticas">
+          <span aria-hidden="true">📊</span><span class="botao__rotulo">Estatísticas</span>
+        </button>
         <button type="button" class="botao botao--icone" data-abrir="painel-ranking" title="Ranking">
           <span aria-hidden="true">🏆</span><span class="botao__rotulo">Ranking</span>
         </button>
@@ -83,8 +86,31 @@
             </div>
           </div>
 
-          <div class="modos" id="lista-de-modos" role="group" aria-label="Modos de jogo">
-            <!-- Preenchido por MenuScreen.js a partir de core/GameModes.js -->
+          <!--
+            Os modos ficam em dois grupos nomeados.
+
+            Antes os de dois jogadores estavam misturados aos de um, e o
+            formato do duelo era escolhido depois, já dentro da partida, por
+            uma lista suspensa. Escolher COMO se joga tem de ser parte de
+            escolher O QUE se joga — não um ajuste encontrado depois.
+          -->
+          <div class="grupo-de-modos">
+            <h3 class="grupo-de-modos__titulo">Um jogador</h3>
+            <div class="modos" id="lista-de-modos" role="group" aria-label="Modos de um jogador">
+              <!-- Preenchido por MenuScreen.js a partir de core/GameModes.js -->
+            </div>
+          </div>
+
+          <div class="grupo-de-modos">
+            <h3 class="grupo-de-modos__titulo">Dois jogadores</h3>
+            <div
+              class="modos modos--duplo"
+              id="lista-de-duelos"
+              role="group"
+              aria-label="Modos de dois jogadores"
+            >
+              <!-- Preenchido por MenuScreen.js -->
+            </div>
           </div>
 
           <div class="tela-inicial__atalhos">
@@ -164,6 +190,7 @@
           <div class="combo" id="combo" hidden aria-live="polite">
             <div class="combo__professores" id="combo-professores"></div>
             <p class="combo__nome" id="combo-nome"></p>
+            <p class="combo__descricao" id="combo-descricao"></p>
             <p class="combo__detalhe" id="combo-detalhe"></p>
           </div>
         </div>
@@ -210,6 +237,148 @@
           <button type="button" class="botao-toque botao-toque--largo" data-comando="hardDrop" aria-label="Queda instantânea">⤓ Soltar</button>
           <button type="button" class="botao-toque" data-comando="guardar" aria-label="Guardar peça">⇄</button>
           <button type="button" class="botao-toque" data-comando="pausa" aria-label="Pausar">⏸</button>
+        </div>
+      </section>
+
+      <!--
+        Duelo de dois jogadores.
+
+        Dois tabuleiros, dois motores e duas entradas — nenhum dos três
+        precisou ser alterado para conviver. Entre eles, a barra de pressão:
+        ela existe para quem assiste, não para quem joga.
+      -->
+      <section class="duelo" id="area-de-duelo" hidden aria-label="Duelo de dois jogadores">
+        <div class="duelo__barra">
+          <label class="duelo__opcao" id="duelo-opcao-corrida">
+            <input type="checkbox" id="duelo-corrida-pura" />
+            <span>Corrida pura</span>
+          </label>
+          <span class="duelo__dica">
+            Desligada, limpar linhas envia lixo e os poderes podem ser mirados no
+            adversário. Ligada, cada um joga o seu e ganha quem sobreviver.
+          </span>
+        </div>
+
+        <div class="duelo__lado duelo__lado--1">
+          <header class="duelo__cabecalho">
+            <span class="duelo__quem">Jogador 1</span>
+            <span class="duelo__dispositivo" id="duelo-dispositivo-1"></span>
+          </header>
+
+          <div class="duelo__tabuleiro" id="duelo-tabuleiro-1">
+            <canvas id="duelo-canvas-1" aria-label="Tabuleiro do jogador 1"></canvas>
+            <span class="duelo__chegando" id="duelo-aviso-1" hidden aria-live="polite"></span>
+            <span class="duelo__combo" id="duelo-combo-1" hidden aria-live="polite"></span>
+          </div>
+
+          <div class="duelo__painel">
+            <div class="duelo__dado">
+              <span class="duelo__rotulo">Pontos</span>
+              <strong class="duelo__valor" id="duelo-pontos-1">0</strong>
+            </div>
+            <div class="duelo__dado">
+              <span class="duelo__rotulo">Linhas</span>
+              <strong class="duelo__valor" id="duelo-linhas-1">0</strong>
+            </div>
+            <div class="duelo__dado duelo__lixo">
+              <span class="duelo__rotulo">Lixo a caminho</span>
+              <strong class="duelo__valor" id="duelo-lixo-1">0</strong>
+            </div>
+            <div class="duelo__dado duelo__dado--largo">
+              <span class="duelo__rotulo">Próxima</span>
+              <canvas class="duelo__proxima" id="duelo-proxima-1" width="88" height="56"></canvas>
+            </div>
+            <div class="duelo__dado duelo__dado--largo">
+              <span class="duelo__rotulo">Poder mira</span>
+              <strong class="duelo__valor duelo__alvo" id="duelo-alvo-1">Em mim</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="duelo__meio">
+          <div
+            class="duelo__pressao"
+            id="duelo-pressao"
+            role="meter"
+            aria-label="Quem está com vantagem"
+          ></div>
+        </div>
+
+        <div class="duelo__lado duelo__lado--2">
+          <header class="duelo__cabecalho">
+            <span class="duelo__quem">Jogador 2</span>
+            <span class="duelo__dispositivo" id="duelo-dispositivo-2"></span>
+          </header>
+
+          <div class="duelo__tabuleiro" id="duelo-tabuleiro-2">
+            <canvas id="duelo-canvas-2" aria-label="Tabuleiro do jogador 2"></canvas>
+            <span class="duelo__chegando" id="duelo-aviso-2" hidden aria-live="polite"></span>
+            <span class="duelo__combo" id="duelo-combo-2" hidden aria-live="polite"></span>
+          </div>
+
+          <div class="duelo__painel">
+            <div class="duelo__dado">
+              <span class="duelo__rotulo">Pontos</span>
+              <strong class="duelo__valor" id="duelo-pontos-2">0</strong>
+            </div>
+            <div class="duelo__dado">
+              <span class="duelo__rotulo">Linhas</span>
+              <strong class="duelo__valor" id="duelo-linhas-2">0</strong>
+            </div>
+            <div class="duelo__dado duelo__lixo">
+              <span class="duelo__rotulo">Lixo a caminho</span>
+              <strong class="duelo__valor" id="duelo-lixo-2">0</strong>
+            </div>
+            <div class="duelo__dado duelo__dado--largo">
+              <span class="duelo__rotulo">Próxima</span>
+              <canvas class="duelo__proxima" id="duelo-proxima-2" width="88" height="56"></canvas>
+            </div>
+            <div class="duelo__dado duelo__dado--largo">
+              <span class="duelo__rotulo">Poder mira</span>
+              <strong class="duelo__valor duelo__alvo" id="duelo-alvo-2">Em mim</strong>
+            </div>
+          </div>
+        </div>
+
+        <!--
+          Tabuleiro compartilhado: uma peça de cada jogador no mesmo tabuleiro.
+          Fica escondido enquanto o formato for de dois tabuleiros.
+        -->
+        <div class="duelo__mesa" id="duelo-mesa" hidden>
+          <div class="duelo__tabuleiro duelo__tabuleiro--mesa" id="duelo-caixa-mesa">
+            <canvas id="mesa-canvas" aria-label="Tabuleiro compartilhado"></canvas>
+          </div>
+
+          <div class="duelo__placar-mesa">
+            <div class="duelo__ficha duelo__ficha--1">
+              <span class="duelo__quem">Jogador 1</span>
+              <strong class="duelo__valor" id="mesa-pontos-1">0</strong>
+              <span class="duelo__rotulo"><span id="mesa-linhas-1">0</span> linhas</span>
+            </div>
+            <div class="duelo__ficha duelo__ficha--2">
+              <span class="duelo__quem">Jogador 2</span>
+              <strong class="duelo__valor" id="mesa-pontos-2">0</strong>
+              <span class="duelo__rotulo"><span id="mesa-linhas-2">0</span> linhas</span>
+            </div>
+            <div class="duelo__ficha duelo__ficha--risco">
+              <span class="duelo__rotulo">Altura da pilha</span>
+              <div class="duelo__risco"><span id="mesa-risco"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="duelo__camada" id="duelo-pausa" hidden>
+          <strong>Pausado</strong>
+          <span>P ou Esc para continuar</span>
+        </div>
+
+        <div class="duelo__camada duelo__camada--fim" id="duelo-fim" hidden>
+          <strong id="duelo-fim-titulo"></strong>
+          <span id="duelo-fim-detalhe"></span>
+          <div class="duelo__botoes">
+            <button type="button" class="botao botao--primario" id="duelo-revanche">Revanche</button>
+            <button type="button" class="botao botao--secundario" id="duelo-sair">Voltar ao menu</button>
+          </div>
         </div>
       </section>
     </main>
@@ -263,7 +432,38 @@
       </div>
     </div>
 
-    <!-- Ranking -->
+    <!-- Estatísticas -->
+    <div class="painel" id="painel-estatisticas" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-estatisticas">
+      <div class="painel__caixa painel__caixa--larga">
+        <header class="painel__cabecalho">
+          <h2 id="titulo-estatisticas">Estatísticas</h2>
+          <button type="button" class="botao botao--fechar" data-fechar aria-label="Fechar">✕</button>
+        </header>
+
+        <div class="painel__corpo" id="corpo-estatisticas">
+          <div class="cartoes" id="cartoes-estatisticas"><!-- StatsPanel.js --></div>
+
+          <section class="secao">
+            <h3 class="secao__titulo">Evolução da partida</h3>
+            <canvas class="grafico" id="grafico-evolucao" aria-label="Gráfico da evolução"></canvas>
+          </section>
+
+          <div class="grade-de-graficos">
+            <section class="secao">
+              <h3 class="secao__titulo">Peças recebidas</h3>
+              <canvas class="grafico grafico--menor" id="grafico-distribuicao" aria-label="Distribuição de peças"></canvas>
+            </section>
+
+            <section class="secao">
+              <h3 class="secao__titulo">Tipos de limpeza</h3>
+              <canvas class="grafico grafico--menor" id="grafico-limpezas" aria-label="Tipos de limpeza"></canvas>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ranking e análise comparativa -->
     <div class="painel" id="painel-ranking" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-ranking">
       <div class="painel__caixa painel__caixa--larga">
         <header class="painel__cabecalho">
@@ -275,6 +475,21 @@
           <div class="abas" id="abas-ranking" role="tablist"><!-- preenchido pelo JS --></div>
           <div id="tabela-ranking"><!-- preenchido pelo JS --></div>
 
+          <section class="secao secao--destaque">
+            <h3 class="secao__titulo">Perfis de jogador</h3>
+            <p class="secao__texto">
+              O ranking fica neste navegador. Para comparar com colegas, cada um exporta o
+              próprio perfil num arquivo e você importa os arquivos aqui.
+            </p>
+            <div class="linha-de-botoes">
+              <button type="button" class="botao botao--secundario" id="botao-exportar-perfil">
+                Exportar meu perfil
+              </button>
+              <label class="botao botao--secundario" for="entrada-importar">Importar perfil</label>
+              <input type="file" id="entrada-importar" accept="application/json,.json" hidden />
+            </div>
+            <p class="aviso-inline" id="aviso-perfil" hidden></p>
+          </section>
         </div>
       </div>
     </div>
@@ -344,7 +559,7 @@
       </div>
     </div>
 
-    <!-- Fim de partida -->
+    <!-- Fim de partida com a análise -->
     <div class="painel" id="painel-fim" hidden role="dialog" aria-modal="true" aria-labelledby="titulo-fim">
       <div class="painel__caixa painel__caixa--larga">
         <header class="painel__cabecalho">
@@ -361,8 +576,7 @@
             </button>
             <button type="button" class="botao botao--secundario" id="botao-voltar-menu">
               Trocar de modo
-            </button>
-          </div>
+            </button>          </div>
         </div>
       </div>
     </div>

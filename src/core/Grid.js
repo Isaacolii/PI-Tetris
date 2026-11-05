@@ -23,6 +23,16 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+/**
+ * Identificador das células de lixo.
+ *
+ * É um tipo próprio, não uma peça reaproveitada: quem olha o tabuleiro precisa
+ * distinguir à primeira vista o que veio do adversário do que ele mesmo
+ * empilhou. A aparência dele é escolhida na camada de desenho, como a de
+ * qualquer outro tipo.
+ */
+export const TIPO_DE_LIXO = 'LIXO';
+
 export class Grid {
   /**
    * @param {number} colunas          largura do tabuleiro (padrão 10)
@@ -352,6 +362,45 @@ export class Grid {
   }
 
   /** Só a parte visível, para a camada de renderização desenhar. */
+  /**
+   * Empurra a pilha para cima e enfia linhas de lixo por baixo.
+   *
+   * É o espelho exato de `removerLinhas`: lá as linhas saem por baixo e o
+   * resto desce; aqui elas entram por baixo e o resto sobe. As DUAS matrizes
+   * andam juntas, pela mesma razão de sempre — deixar `professores` para
+   * trás largaria a marca de um professor flutuando sobre célula vazia.
+   *
+   * O que passar do topo é descartado: quem já está afogado não fica mais
+   * afogado, e `transbordou()` é quem decide o fim.
+   *
+   * @param {number} quantidade
+   * @param {number} [colunaDoBuraco]  mesma coluna em todas as linhas da leva,
+   *                                   que é o que permite desfazê-las com uma
+   *                                   peça I. Buraco variando por linha seria
+   *                                   impossível de limpar.
+   * @returns {number} quantas linhas realmente entraram
+   */
+  adicionarLinhasDeLixo(quantidade, colunaDoBuraco = null) {
+    if (quantidade <= 0) return 0;
+
+    const total = Math.min(quantidade, this.totalDeLinhas);
+    const buraco =
+      colunaDoBuraco === null
+        ? Math.floor(Math.random() * this.colunas)
+        : Math.max(0, Math.min(colunaDoBuraco, this.colunas - 1));
+
+    const linhaDeLixo = () =>
+      Array.from({ length: this.colunas }, (_, coluna) => (coluna === buraco ? null : TIPO_DE_LIXO));
+
+    const vazias = () =>
+      Array.from({ length: total }, () => new Array(this.colunas).fill(null));
+
+    this.celulas = [...this.celulas.slice(total), ...Array.from({ length: total }, linhaDeLixo)];
+    this.professores = [...this.professores.slice(total), ...vazias()];
+
+    return total;
+  }
+
   matrizVisivel() {
     return this.celulas.slice(this.linhasOcultas).map((linha) => [...linha]);
   }

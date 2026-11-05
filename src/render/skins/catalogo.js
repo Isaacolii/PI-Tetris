@@ -27,7 +27,13 @@
  */
 
 /** Cores oficiais do Tetris Guideline — servem de reserva para todas as demais skins. */
+/*
+ * O cinza do lixo entra na tabela padrão de cores, e não em cada skin: assim
+ * toda skin — inclusive as que o jogador criar com fotos — recebe uma cor
+ * legível para o lixo sem precisar declarar nada.
+ */
 export const CORES_PADRAO = {
+  LIXO: '#6b7280',
   I: '#31c7ef',
   O: '#f7d308',
   T: '#ad4d9c',
@@ -211,12 +217,55 @@ export const SKIN_DE_FUNDO_PADRAO = 'carvao';
  *  de lógica muda. Enquanto isso, cada professor é uma cor e uma letra.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+/*
+ * As bombas dos professores.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * A COR AQUI E A COR DA BOMBA TÊM DE SER A MESMA.
+ *
+ * Ela não é só decoração do distintivo: é ela que pinta a onda de choque, os
+ * estilhaços e o anúncio da combinação. Se o arquivo de um professor for
+ * trocado por outro de cor diferente, a explosão dele passa a sair numa cor
+ * que não existe em lugar nenhum da tela.
+ *
+ * Para reatribuir qual bomba é de quem, basta renomear os arquivos da pasta
+ * assets/professores — e ajustar a cor correspondente nesta tabela.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 export const PROFESSORES_VISUAL = {
-  A: { cor: '#ff5252', simbolo: 'A', caricatura: null },
-  B: { cor: '#40c4ff', simbolo: 'B', caricatura: null },
-  C: { cor: '#69f0ae', simbolo: 'C', caricatura: null },
-  D: { cor: '#ffd740', simbolo: 'D', caricatura: null },
-  E: { cor: '#b388ff', simbolo: 'E', caricatura: null },
+  A: {
+    cor: '#ff5252',
+    simbolo: 'A',
+    caricatura: 'assets/professores/prof-a.png',
+    ampliada: 'assets/professores/prof-a-grande.jpg',
+  },
+  B: {
+    cor: '#40c4ff',
+    simbolo: 'B',
+    caricatura: 'assets/professores/prof-b.png',
+    ampliada: 'assets/professores/prof-b-grande.jpg',
+  },
+  // Era verde; passou a laranja para acompanhar a bomba do Jhonatta. Verde não
+  // existe entre as cinco bombas, e marca de uma cor com explosão de outra é o
+  // tipo de incoerência que ninguém consegue desver.
+  C: {
+    cor: '#ff9533',
+    simbolo: 'C',
+    caricatura: 'assets/professores/prof-c.png',
+    ampliada: 'assets/professores/prof-c-grande.jpg',
+  },
+  D: {
+    cor: '#ffd740',
+    simbolo: 'D',
+    caricatura: 'assets/professores/prof-d.png',
+    ampliada: 'assets/professores/prof-d-grande.jpg',
+  },
+  E: {
+    cor: '#b388ff',
+    simbolo: 'E',
+    caricatura: 'assets/professores/prof-e.png',
+    ampliada: 'assets/professores/prof-e-grande.jpg',
+  },
 };
 
 // Para usar caricaturas, coloque sete arquivos quadrados em assets/professores/
@@ -228,5 +277,7 @@ export const PROFESSORES_VISUAL = {
 
 /** Aparência de um professor, com reserva segura caso o id não exista. */
 export function visualDoProfessor(id) {
-  return PROFESSORES_VISUAL[id] ?? { cor: '#ffffff', simbolo: '?', caricatura: null };
+  return (
+    PROFESSORES_VISUAL[id] ?? { cor: '#ffffff', simbolo: '?', caricatura: null, ampliada: null }
+  );
 }

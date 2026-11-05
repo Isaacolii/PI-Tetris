@@ -1,12 +1,12 @@
 {
-  "name": "tetris-dos-professores",
-  "version": "0.2.0",
-  "description": "Protótipo do Projeto Integrador de Games — mecânica central do Tetris com blocos de professor",
+  "name": "tetris-pi",
+  "version": "1.0.0",
+  "description": "Jogo estilo Tetris com arquitetura de renderização plugável — Projeto Integrador",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node scripts/servidor.mjs 3050",
-    "test": "node --test tests/core.test.js tests/professores.test.js"
+    "dev": "node scripts/dev-server.mjs 3050",
+    "test": "node --test tests/core.test.js tests/integracao.test.js tests/professores.test.js tests/versus.test.js tests/mesa.test.js"
   },
   "keywords": [
     "tetris",

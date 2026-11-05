@@ -91,13 +91,21 @@ export class HudRenderer {
    * Desenha a fila de próximas peças.
    * @param {string[]} tipos
    */
-  desenharProximas(tipos) {
+  /**
+   * @param {string[]} tipos
+   * @param {string|null} [marcaDaPrimeira]  bomba que vem na próxima peça
+   *
+   * A bomba aparece SÓ na primeira miniatura. É a única da fila cujo portador
+   * já está decidido: a segunda e a terceira ainda vão passar pelo sorteio, e
+   * mostrar bomba nelas seria inventar informação que o jogo não tem.
+   */
+  desenharProximas(tipos, marcaDaPrimeira = null) {
     if (!this.el.proximas) return;
 
     const canvases = this.el.proximas.querySelectorAll('canvas');
     canvases.forEach((canvas, indice) => {
       const tipo = tipos[indice];
-      this.#desenharMiniatura(canvas, tipo);
+      this.#desenharMiniatura(canvas, tipo, indice === 0 ? marcaDaPrimeira : null);
     });
   }
 
@@ -137,8 +145,8 @@ export class HudRenderer {
   }
 
   /** Redesenha as miniaturas — chamado quando a skin muda no meio da partida. */
-  redesenharMiniaturas(tiposDaFila, tipoNaReserva, professorNaReserva = null) {
-    this.desenharProximas(tiposDaFila);
+  redesenharMiniaturas(tiposDaFila, tipoNaReserva, professorNaReserva = null, marcaDaProxima = null) {
+    this.desenharProximas(tiposDaFila, marcaDaProxima);
     this.desenharReserva(tipoNaReserva, professorNaReserva);
   }
 

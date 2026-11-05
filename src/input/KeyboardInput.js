@@ -15,20 +15,20 @@
  */
 
 /** Espera antes de a repetição começar, em milissegundos. */
-const DAS_MS = 170;
+export const DAS_MS = 170;
 
 /** Intervalo entre repetições depois que o DAS passa. */
-const ARR_MS = 50;
+export const ARR_MS = 50;
 
 /** Repetição da descida voluntária — mais rápida, porque o jogador quer precisão. */
-const ARR_SOFT_DROP_MS = 40;
+export const ARR_SOFT_DROP_MS = 40;
 
 /**
  * Mapa tecla -> comando.
  * As teclas usam `event.code`, que independe do layout do teclado: em teclado
  * ABNT2 ou americano, `KeyZ` é sempre a tecla física Z.
  */
-const MAPA_DE_TECLAS = {
+export const MAPA_DE_TECLAS = {
   ArrowLeft: 'esquerda',
   ArrowRight: 'direita',
   ArrowDown: 'softDrop',
@@ -43,19 +43,80 @@ const MAPA_DE_TECLAS = {
   KeyP: 'pausa',
   Escape: 'pausa',
   KeyR: 'reiniciar',
+  KeyV: 'alvo',
+};
+
+/**
+ * Mapas do duelo: um teclado, dois jogadores.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * A divisão é FÍSICA, não alfabética: jogador 1 na metade esquerda, jogador 2
+ * na direita. Dois pares de mãos no mesmo teclado só funcionam se cada um
+ * tiver o seu território — mapas entrelaçados fazem os jogadores esbarrarem.
+ *
+ * As teclas usam `event.code`, que é a posição física: em ABNT2 ou
+ * americano, `KeyW` é sempre a tecla logo acima do `KeyS`.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+export const MAPA_JOGADOR_1 = {
+  KeyA: 'esquerda',
+  KeyD: 'direita',
+  KeyS: 'softDrop',
+  KeyW: 'girarHorario',
+  KeyQ: 'girarAntiHorario',
+  Space: 'hardDrop',
+  KeyE: 'guardar',
+  KeyF: 'alvo',
+};
+
+export const MAPA_JOGADOR_2 = {
+  ArrowLeft: 'esquerda',
+  ArrowRight: 'direita',
+  ArrowDown: 'softDrop',
+  ArrowUp: 'girarHorario',
+  ControlRight: 'girarAntiHorario',
+  Enter: 'hardDrop',
+  NumpadEnter: 'hardDrop',
+  ShiftRight: 'guardar',
+  Numpad0: 'alvo',
+  Slash: 'alvo',
+};
+
+/**
+ * Teclas que valem para a partida inteira, não para um jogador só.
+ * Pausar é dos dois: quem precisar parar, para.
+ */
+export const MAPA_COMPARTILHADO = {
+  KeyP: 'pausa',
+  Escape: 'pausa',
+  KeyR: 'reiniciar',
 };
 
 /** Comandos que repetem enquanto a tecla fica pressionada. */
-const COMANDOS_COM_REPETICAO = new Set(['esquerda', 'direita', 'softDrop']);
+export const COMANDOS_COM_REPETICAO = new Set(['esquerda', 'direita', 'softDrop']);
 
 export class KeyboardInput {
   /**
    * @param {(comando: string) => void} aoComando  recebe cada comando disparado
-   * @param {HTMLElement|Document} [alvo]
+   * @param {Object|HTMLElement|Document} [opcoes]  mapa e alvo, ou só o alvo
+   *        (a forma antiga, com o elemento no segundo argumento, continua valendo)
+   * @param {Record<string,string>} [opcoes.mapa]  tecla física -> nome do comando
+   * @param {HTMLElement|Document} [opcoes.alvo]
    */
-  constructor(aoComando, alvo = document) {
+  constructor(aoComando, opcoes = {}) {
+    // Aceita a chamada antiga, que passava o elemento direto no segundo
+    // argumento. Dois jogadores não podem custar uma varredura por todas as
+    // chamadas que já existem.
+    const ehElemento = opcoes && typeof opcoes.addEventListener === 'function';
+    const { mapa = MAPA_DE_TECLAS, alvo } = ehElemento ? { alvo: opcoes } : opcoes;
+
     this.aoComando = aoComando;
-    this.alvo = alvo;
+    this.mapa = mapa;
+
+    // O padrão não pode ser `document` direto: no terminal ele não existe, e a
+    // classe deixaria de ser construível fora do navegador — justamente onde
+    // os testes provam que os dois mapas não disputam tecla.
+    this.alvo = alvo ?? (typeof document === 'undefined' ? null : document);
 
     /** Estado das teclas em repetição: comando -> { tempoSegurado, jaRepetiu } */
     this.segurando = new Map();
@@ -90,7 +151,7 @@ export class KeyboardInput {
     // Se o jogador está digitando o nome no ranking, o jogo não pode roubar as teclas.
     if (this.#focoEmCampoDeTexto()) return;
 
-    const comando = MAPA_DE_TECLAS[evento.code];
+    const comando = this.mapa[evento.code];
     if (!comando) return;
 
     // Impede a página de rolar com as setas e a barra de espaço.
@@ -108,7 +169,7 @@ export class KeyboardInput {
   }
 
   #aoSoltar(evento) {
-    const comando = MAPA_DE_TECLAS[evento.code];
+    const comando = this.mapa[evento.code];
     if (comando) this.segurando.delete(comando);
   }
 
