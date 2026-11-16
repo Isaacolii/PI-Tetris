@@ -86,6 +86,12 @@ const EFEITOS = {
     { onda: 'triangle', frequencia: NOTAS.la2, inicio: 0.24, duracao: 0.22, volume: 0.2 },
   ],
 
+  /** Aviso de que um jogador ficou sem espaço para nascer: duas notas graves. */
+  alerta: [
+    { onda: 'square', frequencia: NOTAS.do4 / 2, inicio: 0, duracao: 0.12, volume: 0.24 },
+    { onda: 'square', frequencia: NOTAS.do4 / 2.4, inicio: 0.13, duracao: 0.2, volume: 0.22 },
+  ],
+
   nivel: [
     { onda: 'sine', frequencia: NOTAS.do4, inicio: 0, duracao: 0.1, volume: 0.28 },
     { onda: 'sine', frequencia: NOTAS.mi4, inicio: 0.09, duracao: 0.1, volume: 0.28 },

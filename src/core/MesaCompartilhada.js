@@ -21,8 +21,31 @@
  *
  *   • uma peça é sólida para a outra;
  *   • as duas podem travar no mesmo quadro, e a ordem precisa ser decidida;
- *   • a linha limpa é de QUEM a fechou;
- *   • quem não consegue mais fazer a peça nascer está eliminado.
+ *   • os dois jogam PELA MESMA pontuação;
+ *   • quem não consegue fazer a peça nascer fica esperando, não morre.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  POR QUE É COOPERATIVO, E NÃO UM DUELO
+ *
+ *  Como duelo este modo durava pouco e premiava a coisa errada. Duas peças
+ *  caem no mesmo tabuleiro, então a pilha sobe pelo dobro — e a partida
+ *  terminava no instante em que UM dos dois não conseguia fazer a peça
+ *  nascer. Na prática: um erro de qualquer um encerrava o jogo dos dois, em
+ *  menos de um minuto, e atrapalhar o colega era a jogada mais eficiente.
+ *
+ *  No cooperativo as três coisas se invertem:
+ *
+ *    • a pontuação é UMA, da dupla, então ajudar o outro é pontuar;
+ *    • quem não consegue nascer fica ESPERANDO, e volta assim que o colega
+ *      abrir espaço — o que faz do resgate a jogada mais importante do modo;
+ *    • o jogo só acaba quando os DOIS estão esperando ao mesmo tempo, que é
+ *      quando ninguém pode mais mexer no tabuleiro.
+ *
+ *  O tabuleiro também é mais largo que o de um jogador, e o nível sobe a cada
+ *  20 linhas em vez de 10. Os dois números saem do mesmo raciocínio: duas
+ *  pessoas enchem e limpam na metade do tempo, então o espaço e o ritmo
+ *  precisam acompanhar, ou o modo vira uma corrida de trinta segundos.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { Grid } from './Grid.js';
@@ -39,12 +62,25 @@ const ATRASO_DE_TRAVAMENTO_MS = 500;
 const MAXIMO_DE_ADIAMENTOS = 15;
 
 /**
+ * Largura do tabuleiro da dupla.
+ *
+ * Duas colunas a mais que o tabuleiro de um jogador. Não é enfeite: com duas
+ * peças caindo ao mesmo tempo em 10 colunas, as duas disputam o mesmo buraco
+ * e cada jogador tem, na prática, cinco colunas para trabalhar — menos do que
+ * uma peça I precisa para ser útil. Com 12, cada um tem seis.
+ */
+const COLUNAS_DA_MESA = 12;
+
+/**
  * Coluna onde a peça de cada jogador nasce.
  *
  * Separadas de propósito: nascer no mesmo lugar faria as duas peças brotarem
- * uma dentro da outra e os dois jogadores serem eliminados no primeiro quadro.
+ * uma dentro da outra e os dois ficarem presos já no primeiro quadro.
  */
-const COLUNA_DE_NASCIMENTO = [1, 5];
+const COLUNA_DE_NASCIMENTO = [1, 7];
+
+/** Linhas para subir de nível. O dobro do normal — ver o cabeçalho. */
+const LINHAS_POR_NIVEL_COOP = 20;
 
 export class MesaCompartilhada {
   /**
@@ -58,7 +94,7 @@ export class MesaCompartilhada {
     this.comProfessores = comProfessores;
     this.nivelInicial = nivelInicial;
 
-    this.grid = new Grid();
+    this.grid = new Grid(COLUNAS_DA_MESA);
 
     /**
      * Um saco de peças só para os dois.
@@ -77,11 +113,20 @@ export class MesaCompartilhada {
     /** @type {Map<string, Function[]>} */
     this.ouvintes = new Map();
 
+    /**
+     * UMA pontuação para os dois.
+     *
+     * É o que faz o modo ser cooperativo de verdade e não só de nome: com
+     * placares separados, deixar o colega fechar a linha era perder pontos,
+     * e o jogo empurrava os dois a competir dentro de um tabuleiro que só
+     * funciona se eles se ajudarem.
+     */
+    this.equipe = new ScoreSystem(this.nivelInicial, LINHAS_POR_NIVEL_COOP);
+
     this.pilotos = [0, 1].map((indice) => this.#criarPiloto(indice));
 
     this.rodando = false;
     this.encerrada = false;
-    this.vencedor = null;
   }
 
   #criarPiloto(indice) {
@@ -89,13 +134,20 @@ export class MesaCompartilhada {
       indice,
       /** @type {PecaAtiva|null} */
       peca: null,
-      pontuacao: new ScoreSystem(this.nivelInicial),
       tempoDeQueda: 0,
       tempoEncostada: 0,
       adiamentos: 0,
       pecaGuardada: null,
       reservaBloqueada: false,
-      eliminado: false,
+      /**
+       * Sem espaço para a peça nascer AGORA.
+       *
+       * Não é derrota: é uma pausa. A cada quadro a mesa tenta de novo, e
+       * assim que o colega limpar uma linha este jogador volta sozinho.
+       */
+      esperando: false,
+      /** Peça já sorteada que ainda não coube; volta na próxima tentativa. */
+      tipoRetido: null,
       linhasFechadas: 0,
       poderesDisparados: 0,
     };
@@ -129,7 +181,7 @@ export class MesaCompartilhada {
     if (this.grid.colide(peca)) return true;
 
     const outro = this.pilotos[indice === 0 ? 1 : 0];
-    if (!outro?.peca || outro.eliminado) return false;
+    if (!outro?.peca || outro.esperando) return false;
 
     const ocupadasPeloOutro = new Set(
       outro.peca.celulasOcupadas().map(({ linha, coluna }) => `${linha},${coluna}`),
@@ -156,7 +208,7 @@ export class MesaCompartilhada {
   iniciar() {
     this.rodando = true;
     this.encerrada = false;
-    this.vencedor = null;
+    this.equipe.reiniciar();
 
     for (const piloto of this.pilotos) this.#nascerPeca(piloto);
     this.#emitir('iniciada', { semente: this.semente });
@@ -168,10 +220,10 @@ export class MesaCompartilhada {
     this.sorteio.reiniciar(this.semente);
     this.professores.reiniciar();
 
+    this.equipe.reiniciar();
     this.pilotos = [0, 1].map((indice) => this.#criarPiloto(indice));
     this.rodando = false;
     this.encerrada = false;
-    this.vencedor = null;
 
     this.#emitir('reiniciada', { semente: this.semente });
   }
@@ -212,14 +264,27 @@ export class MesaCompartilhada {
     if (!this.rodando || this.encerrada) return;
 
     for (const piloto of this.pilotos) {
-      if (piloto.eliminado || !piloto.peca) continue;
+      /*
+       * Quem está esperando tenta nascer de novo, todo quadro.
+       *
+       * É aqui que o resgate acontece: o colega limpa uma linha, a área de
+       * nascimento abre, e na próxima passagem este jogador volta ao jogo
+       * sem precisar de nada além disso.
+       */
+      if (piloto.esperando) {
+        this.#nascerPeca(piloto);
+        if (this.encerrada) return;
+        continue;
+      }
+
+      if (!piloto.peca) continue;
       this.#avancarPiloto(piloto, deltaMs);
       if (this.encerrada) return;
     }
   }
 
   #avancarPiloto(piloto, deltaMs) {
-    const intervalo = piloto.pontuacao.intervaloDeQueda();
+    const intervalo = this.equipe.intervaloDeQueda();
 
     piloto.tempoDeQueda += deltaMs;
     while (piloto.tempoDeQueda >= intervalo) {
@@ -294,7 +359,7 @@ export class MesaCompartilhada {
     if (!piloto) return false;
 
     if (!this.#descerUmaLinha(piloto)) return false;
-    piloto.pontuacao.registrarSoftDrop(1);
+    this.equipe.registrarSoftDrop(1);
     return true;
   }
 
@@ -311,7 +376,7 @@ export class MesaCompartilhada {
       distancia++;
     }
 
-    piloto.pontuacao.registrarHardDrop(distancia);
+    this.equipe.registrarHardDrop(distancia);
     this.#travar(piloto);
     return true;
   }
@@ -331,7 +396,7 @@ export class MesaCompartilhada {
   /** Posição onde a peça do jogador vai parar — a sombra. */
   fantasmaDe(indice) {
     const piloto = this.pilotos[indice];
-    if (!piloto?.peca || piloto.eliminado) return null;
+    if (!piloto?.peca || piloto.esperando) return null;
 
     const sombra = piloto.peca.clonar();
     for (;;) {
@@ -346,7 +411,7 @@ export class MesaCompartilhada {
   #ativo(indice) {
     if (!this.rodando || this.encerrada) return null;
     const piloto = this.pilotos[indice];
-    if (!piloto || piloto.eliminado || !piloto.peca) return null;
+    if (!piloto || piloto.esperando || !piloto.peca) return null;
     return piloto;
   }
 
@@ -383,7 +448,7 @@ export class MesaCompartilhada {
     if (!relatorio) return;
 
     piloto.poderesDisparados++;
-    piloto.pontuacao.registrarColunasPorPoder?.(relatorio.colunasAtingidas?.length ?? 0);
+    this.equipe.registrarColunasPorPoder?.(relatorio.colunasAtingidas?.length ?? 0);
 
     // Uma linha esvaziada por poder não pode ficar flutuando no meio da pilha.
     this.grid.desmoronarLinhasVazias();
@@ -415,7 +480,7 @@ export class MesaCompartilhada {
 
     this.grid.removerLinhas(completas);
 
-    const ganho = piloto.pontuacao.registrarLimpeza(completas.length);
+    const ganho = this.equipe.registrarLimpeza(completas.length);
     piloto.linhasFechadas += completas.length;
 
     this.#emitir('linhasLimpas', {
@@ -430,29 +495,54 @@ export class MesaCompartilhada {
   // ───────────────────────────── nascimento ─────────────────────────────
 
   #nascerPeca(piloto, tipoForcado = null) {
-    const tipo = tipoForcado ?? this.sorteio.proxima();
+    /*
+     * Quem está esperando guarda a peça que não coube e tenta a MESMA de novo.
+     *
+     * Sem isto, a retentativa a cada quadro puxaria uma peça nova do saco
+     * sessenta vezes por segundo: em três segundos de espera a dupla teria
+     * perdido quase 200 peças, o 7-bag deixaria de valer para quem continua
+     * jogando, e a sequência pararia de ser reproduzível pela semente.
+     */
+    const tipo = tipoForcado ?? piloto.tipoRetido ?? this.sorteio.proxima();
+    piloto.tipoRetido = null;
     const peca = new PecaAtiva(tipo, 0, COLUNA_DE_NASCIMENTO[piloto.indice]);
 
+    /*
+     * Não coube AGORA: este jogador fica esperando.
+     *
+     * Repare que a peça do colega conta como obstáculo aqui — dá para travar
+     * o nascimento do outro sem querer, estacionando a peça em cima da área
+     * dele. No cooperativo isso não elimina ninguém: é um aviso de que a
+     * dupla precisa abrir espaço, e quem continua jogando tem como fazê-lo.
+     */
+    if (this.colide(peca, piloto.indice)) {
+      const jaEstava = piloto.esperando;
+      piloto.peca = null;
+      piloto.esperando = true;
+      piloto.tipoRetido = tipo;
+      if (!jaEstava) this.#emitir('jogadorEsperando', { jogador: piloto.indice });
+      this.#verificarFim();
+      return;
+    }
+
+    if (piloto.esperando) {
+      piloto.esperando = false;
+      this.#emitir('jogadorVoltou', { jogador: piloto.indice });
+    }
+
+    /*
+     * A marca de professor é sorteada DEPOIS de saber que a peça coube.
+     *
+     * Antes ela vinha primeiro, e cada tentativa frustrada de nascer gastava
+     * um sorteio: com a retentativa por quadro isso giraria o gerador sem
+     * parar e quebraria a reprodução da partida pela semente — o saco de
+     * peças e o sorteio de professor compartilham o mesmo gerador.
+     */
     if (this.comProfessores) {
       const professor = this.professores.prepararPeca(peca);
       if (professor) {
         this.#emitir('professorNaPeca', { jogador: piloto.indice, tipo, professor });
       }
-    }
-
-    /*
-     * Não coube: este jogador está fora.
-     *
-     * Repare que a peça do OUTRO conta como obstáculo aqui. É possível ser
-     * eliminado porque o adversário estacionou a peça dele em cima da sua
-     * área de nascimento — e isso é jogada legítima neste modo, não defeito.
-     */
-    if (this.colide(peca, piloto.indice)) {
-      piloto.peca = null;
-      piloto.eliminado = true;
-      this.#emitir('jogadorEliminado', { jogador: piloto.indice });
-      this.#verificarFim();
-      return;
     }
 
     piloto.peca = peca;
@@ -464,18 +554,24 @@ export class MesaCompartilhada {
     this.#emitir('novaPeca', { jogador: piloto.indice, tipo });
   }
 
+  /**
+   * O jogo acaba quando os DOIS estão esperando.
+   *
+   * Enquanto um só estiver jogando ainda há saída: ele pode limpar a linha
+   * que devolve o colega ao tabuleiro. Com os dois parados ninguém mais põe
+   * uma peça, logo nada no tabuleiro pode mudar — aí sim acabou.
+   */
   #verificarFim() {
     if (this.encerrada) return;
-
-    const vivos = this.pilotos.filter((p) => !p.eliminado);
-    if (vivos.length > 1) return;
+    if (this.pilotos.some((p) => !p.esperando)) return;
 
     this.encerrada = true;
     this.rodando = false;
-    this.vencedor = vivos[0]?.indice ?? null;
 
     this.#emitir('fimDaMesa', {
-      vencedor: this.vencedor,
+      pontos: this.equipe.pontos,
+      linhas: this.equipe.linhas,
+      nivel: this.equipe.nivel,
       placar: this.placar(),
     });
   }
@@ -488,14 +584,19 @@ export class MesaCompartilhada {
     return Math.max(...alturas, 0) / this.grid.linhasVisiveis;
   }
 
+  /**
+   * Os pontos e o nível são da DUPLA e vêm repetidos nos dois,
+   * porque a tela mostra uma ficha por jogador. O que de fato separa um do
+   * outro é `linhas`: quantas cada um fechou, a contribuição de cada um.
+   */
   placar() {
     return this.pilotos.map((piloto) => ({
       jogador: piloto.indice,
-      pontos: piloto.pontuacao.pontos,
+      pontos: this.equipe.pontos,
       linhas: piloto.linhasFechadas,
-      nivel: piloto.pontuacao.nivel,
+      nivel: this.equipe.nivel,
       poderes: piloto.poderesDisparados,
-      eliminado: piloto.eliminado,
+      esperando: piloto.esperando,
       reserva: piloto.pecaGuardada,
     }));
   }

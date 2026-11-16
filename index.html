@@ -249,14 +249,23 @@
       -->
       <section class="duelo" id="area-de-duelo" hidden aria-label="Duelo de dois jogadores">
         <div class="duelo__barra">
+          <fieldset class="duelo__modos" id="duelo-escolha-modo">
+            <legend class="duelo__rotulo">Modo</legend>
+            <label class="duelo__pilula">
+              <input type="radio" name="duelo-modo" value="professores" checked />
+              <span>Professores</span>
+            </label>
+            <label class="duelo__pilula">
+              <input type="radio" name="duelo-modo" value="maratona" />
+              <span>Tetris clássico</span>
+            </label>
+          </fieldset>
+
           <label class="duelo__opcao" id="duelo-opcao-corrida">
             <input type="checkbox" id="duelo-corrida-pura" />
             <span>Corrida pura</span>
           </label>
-          <span class="duelo__dica">
-            Desligada, limpar linhas envia lixo e os poderes podem ser mirados no
-            adversário. Ligada, cada um joga o seu e ganha quem sobreviver.
-          </span>
+          <span class="duelo__dica" id="duelo-dica"></span>
         </div>
 
         <div class="duelo__lado duelo__lado--1">
@@ -268,7 +277,20 @@
           <div class="duelo__tabuleiro" id="duelo-tabuleiro-1">
             <canvas id="duelo-canvas-1" aria-label="Tabuleiro do jogador 1"></canvas>
             <span class="duelo__chegando" id="duelo-aviso-1" hidden aria-live="polite"></span>
-            <span class="duelo__combo" id="duelo-combo-1" hidden aria-live="polite"></span>
+            <!--
+              O anuncio fica DENTRO da moldura deste tabuleiro.
+
+              No meio da tela ele cobria os dois: a combinacao de um atrapalhava
+              a visao do outro bem no instante em que o outro mais precisa ver a
+              propria pilha. Aqui a posicao ja diz de quem foi, sem precisar de
+              rotulo escrito.
+            -->
+            <div class="combo combo--lado" id="duelo-combo-1" hidden aria-live="polite">
+              <div class="combo__professores" id="duelo-combo-professores-1"></div>
+              <p class="combo__nome" id="duelo-combo-nome-1"></p>
+              <p class="combo__descricao" id="duelo-combo-descricao-1"></p>
+              <p class="combo__detalhe" id="duelo-combo-detalhe-1"></p>
+            </div>
           </div>
 
           <div class="duelo__painel">
@@ -288,7 +310,7 @@
               <span class="duelo__rotulo">Próxima</span>
               <canvas class="duelo__proxima" id="duelo-proxima-1" width="88" height="56"></canvas>
             </div>
-            <div class="duelo__dado duelo__dado--largo">
+            <div class="duelo__dado duelo__dado--largo" id="duelo-caixa-alvo-1">
               <span class="duelo__rotulo">Poder mira</span>
               <strong class="duelo__valor duelo__alvo" id="duelo-alvo-1">Em mim</strong>
             </div>
@@ -313,7 +335,20 @@
           <div class="duelo__tabuleiro" id="duelo-tabuleiro-2">
             <canvas id="duelo-canvas-2" aria-label="Tabuleiro do jogador 2"></canvas>
             <span class="duelo__chegando" id="duelo-aviso-2" hidden aria-live="polite"></span>
-            <span class="duelo__combo" id="duelo-combo-2" hidden aria-live="polite"></span>
+            <!--
+              O anuncio fica DENTRO da moldura deste tabuleiro.
+
+              No meio da tela ele cobria os dois: a combinacao de um atrapalhava
+              a visao do outro bem no instante em que o outro mais precisa ver a
+              propria pilha. Aqui a posicao ja diz de quem foi, sem precisar de
+              rotulo escrito.
+            -->
+            <div class="combo combo--lado" id="duelo-combo-2" hidden aria-live="polite">
+              <div class="combo__professores" id="duelo-combo-professores-2"></div>
+              <p class="combo__nome" id="duelo-combo-nome-2"></p>
+              <p class="combo__descricao" id="duelo-combo-descricao-2"></p>
+              <p class="combo__detalhe" id="duelo-combo-detalhe-2"></p>
+            </div>
           </div>
 
           <div class="duelo__painel">
@@ -333,7 +368,7 @@
               <span class="duelo__rotulo">Próxima</span>
               <canvas class="duelo__proxima" id="duelo-proxima-2" width="88" height="56"></canvas>
             </div>
-            <div class="duelo__dado duelo__dado--largo">
+            <div class="duelo__dado duelo__dado--largo" id="duelo-caixa-alvo-2">
               <span class="duelo__rotulo">Poder mira</span>
               <strong class="duelo__valor duelo__alvo" id="duelo-alvo-2">Em mim</strong>
             </div>
@@ -347,18 +382,41 @@
         <div class="duelo__mesa" id="duelo-mesa" hidden>
           <div class="duelo__tabuleiro duelo__tabuleiro--mesa" id="duelo-caixa-mesa">
             <canvas id="mesa-canvas" aria-label="Tabuleiro compartilhado"></canvas>
+            <!--
+              Aqui o anuncio continua um so, e com a linha "Jogador N": o
+              tabuleiro e compartilhado, entao a posicao nao diz de quem foi.
+            -->
+            <div class="combo combo--lado" id="mesa-combo" hidden aria-live="polite">
+              <p class="combo__quem" id="mesa-combo-quem"></p>
+              <div class="combo__professores" id="mesa-combo-professores"></div>
+              <p class="combo__nome" id="mesa-combo-nome"></p>
+              <p class="combo__descricao" id="mesa-combo-descricao"></p>
+              <p class="combo__detalhe" id="mesa-combo-detalhe"></p>
+            </div>
           </div>
 
           <div class="duelo__placar-mesa">
+            <!--
+              A pontuação é UMA, da dupla, e por isso vem primeiro e maior.
+              As fichas dos jogadores mostram a contribuição de cada um em
+              linhas fechadas — que é o que de fato os separa no cooperativo.
+            -->
+            <div class="duelo__ficha duelo__ficha--dupla">
+              <span class="duelo__quem">Pontos da dupla</span>
+              <strong class="duelo__valor" id="mesa-pontos">0</strong>
+              <span class="duelo__rotulo"><span id="mesa-linhas">0</span> linhas no total</span>
+            </div>
             <div class="duelo__ficha duelo__ficha--1">
               <span class="duelo__quem">Jogador 1</span>
-              <strong class="duelo__valor" id="mesa-pontos-1">0</strong>
-              <span class="duelo__rotulo"><span id="mesa-linhas-1">0</span> linhas</span>
+              <strong class="duelo__valor" id="mesa-linhas-1">0</strong>
+              <span class="duelo__rotulo">linhas fechadas</span>
+              <span class="duelo__socorro" id="mesa-aviso-1" hidden aria-live="polite"></span>
             </div>
             <div class="duelo__ficha duelo__ficha--2">
               <span class="duelo__quem">Jogador 2</span>
-              <strong class="duelo__valor" id="mesa-pontos-2">0</strong>
-              <span class="duelo__rotulo"><span id="mesa-linhas-2">0</span> linhas</span>
+              <strong class="duelo__valor" id="mesa-linhas-2">0</strong>
+              <span class="duelo__rotulo">linhas fechadas</span>
+              <span class="duelo__socorro" id="mesa-aviso-2" hidden aria-live="polite"></span>
             </div>
             <div class="duelo__ficha duelo__ficha--risco">
               <span class="duelo__rotulo">Altura da pilha</span>

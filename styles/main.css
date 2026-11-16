@@ -1028,27 +1028,52 @@ kbd {
 
 .combo__professores {
   display: flex;
-  gap: 10px;
+  gap: clamp(10px, 2.5vw, 20px);
   align-items: center;
   justify-content: center;
 }
 
+/*
+ * O distintivo do anuncio e o MAIOR do jogo, de proposito.
+ *
+ * Ele e o unico lugar onde a arte da bomba aparece grande durante a partida:
+ * no tabuleiro ela cabe numa celula, no painel tem 34px. E o instante do
+ * anuncio e justamente quando o jogador quer saber QUAIS bombas ele juntou.
+ *
+ * O `clamp` mede pela largura da janela porque o anuncio atravessa a tela:
+ * fixo em 64px ele sumia num monitor grande e estourava num telefone.
+ */
 .combo__distintivo {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: clamp(76px, 15vw, 124px);
+  height: clamp(76px, 15vw, 124px);
   border: 4px solid rgba(255, 255, 255, 0.96);
   border-radius: 50%;
   color: rgba(0, 0, 0, 0.82);
-  font-size: 1.75rem;
+  font-size: clamp(2rem, 4vw, 3.2rem);
   font-weight: 800;
+}
+
+/*
+ * Brilho na cor do professor.
+ *
+ * Com as imagens maiores, a borda branca sozinha nao bastava para separar as
+ * duas bombas do fundo escuro: elas pareciam dois recortes colados. O halo
+ * tambem repete a cor que a explosao vai usar, ligando o anuncio ao efeito.
+ */
+.combo__distintivo.distintivo--bomba {
+  border-width: 3px;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.55),
+    0 0 26px var(--cor-do-professor, rgba(255, 255, 255, 0.6));
 }
 
 .combo__mais {
   color: var(--texto);
-  font-size: 2rem;
+  font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 300;
   opacity: 0.75;
 }
@@ -1955,7 +1980,10 @@ body.alto-contraste .painel__caixa {
  */
 .duelo__tabuleiro canvas {
   display: block;
-  height: min(76vh, 860px);
+  /* 72vh, nao 76: a barra ganhou a escolha de modo e cresceu ~30px. Num
+     duelo a pagina nao pode rolar — os dois olham a mesma tela ao mesmo
+     tempo e ninguem rola para ver o proprio placar. */
+  height: min(72vh, 820px);
   width: auto;
   aspect-ratio: 1 / 2;
   /*
@@ -2056,37 +2084,64 @@ body.alto-contraste .painel__caixa {
 /* ── tabuleiro compartilhado ── */
 
 
+
 /*
- * Nome da combinação, sobre o tabuleiro de quem a fez.
+ * O anuncio da combinacao, DENTRO da moldura de um tabuleiro.
  *
- * Fica no RODAPÉ do tabuleiro, e o aviso de lixo no topo: os dois disparam
- * juntos quando um poder manda lixo, e sobrepostos um esconderia o outro.
+ * Centralizado na tela ele cobria os dois jogadores: a combinacao de um
+ * tapava a pilha do outro no instante em que o outro mais precisava ve-la.
+ * Dentro da propria moldura, a posicao ja responde "de quem foi" e ninguem
+ * perde a visao do que e seu.
+ *
+ * z-index abaixo das camadas de pausa e de fim: um anuncio por cima do "Fim
+ * de partida" esconderia justamente o que o jogador precisa ler.
  */
-.duelo__combo {
+.combo--lado {
   position: absolute;
-  bottom: 6px;
-  left: 0;
-  right: 0;
+  inset: 0;
   z-index: 3;
-  padding: 4px 6px;
-  background: rgba(8, 10, 16, 0.78);
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  /* A moldura do tabuleiro zera a entrelinha para matar o vao embaixo do
-     canvas; sem repor aqui, a faixa fica com 8px de altura e corta o texto. */
-  line-height: 1.35;
-  text-align: center;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
-  animation: combo-do-duelo 1400ms ease-out both;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  /*
+   * A moldura zera a entrelinha para matar o vao embaixo do canvas. Sem
+   * repor aqui, cada linha do anuncio ficaria com altura zero e os textos
+   * sairiam colados uns por cima dos outros.
+   */
+  line-height: 1.3;
+  pointer-events: none;
 }
 
-@keyframes combo-do-duelo {
-  from { opacity: 0; transform: translateY(8px); }
-  18%  { opacity: 1; transform: translateY(0); }
-  82%  { opacity: 1; }
-  to   { opacity: 0; }
+/*
+ * Dentro de um tabuleiro de duelo nao cabem os 124px do modo de um jogador:
+ * dois desses ocupariam a largura inteira. A medida aqui e em `vw` menor,
+ * porque sao dois tabuleiros dividindo a mesma tela.
+ */
+.combo--lado .combo__distintivo {
+  width: clamp(54px, 7vw, 84px);
+  height: clamp(54px, 7vw, 84px);
+  border-width: 3px;
+  font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+}
+
+.combo--lado .combo__mais { font-size: clamp(1.4rem, 2.4vw, 2rem); }
+.combo--lado .combo__nome { padding: 6px 16px; font-size: clamp(1rem, 1.7vw, 1.4rem); }
+.combo--lado .combo__descricao { font-size: clamp(0.76rem, 1.1vw, 0.92rem); }
+.combo--lado .combo__detalhe { font-size: 0.7rem; }
+
+.combo__quem {
+  margin: 0;
+  padding: 3px 14px;
+  border-radius: 999px;
+  background: rgba(6, 8, 14, 0.9);
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .duelo__mesa {
@@ -2103,8 +2158,92 @@ body.alto-contraste .painel__caixa {
  * que sobrou ao tirar o segundo tabuleiro vai todo para este.
  */
 .duelo__tabuleiro--mesa canvas {
-  height: min(66vh, 800px);
-  max-width: 44vw;
+  height: min(61vh, 760px);
+  max-width: 48vw;
+  /*
+   * 12 colunas por 20 linhas, nao 10 por 20.
+   *
+   * A proporcao e declarada porque o canvas e dimensionado pela ALTURA: sem
+   * corrigi-la, as 12 colunas seriam espremidas na largura de 10 e os blocos
+   * sairiam achatados — o mesmo tabuleiro pareceria outro jogo.
+   */
+  aspect-ratio: 12 / 20;
+}
+
+
+/* ── Escolha de modo no duelo ── */
+
+.duelo__modos {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.duelo__modos .duelo__rotulo {
+  padding: 0 6px 0 0;
+  float: none;
+}
+
+/*
+ * O radio de verdade continua la, so que invisivel: e ele que o teclado
+ * percorre e o leitor de tela anuncia. A pilula e o rotulo pintado por cima.
+ */
+.duelo__pilula input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.duelo__pilula span {
+  display: inline-block;
+  padding: 4px 11px;
+  border: 1px solid var(--linha);
+  border-radius: 999px;
+  background: var(--superficie);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.duelo__pilula input:checked + span {
+  border-color: var(--acento);
+  background: var(--acento-fraco);
+  color: var(--acento);
+}
+
+.duelo__pilula input:focus-visible + span {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* ── Placar da dupla ── */
+
+.duelo__ficha--dupla {
+  border-top-color: var(--acento);
+  min-width: 10rem;
+}
+
+.duelo__ficha--dupla .duelo__valor {
+  font-size: 1.5rem;
+  color: var(--acento);
+}
+
+/*
+ * O pedido de socorro e o unico texto da ficha que muda de cor.
+ * Precisa saltar: enquanto ele esta na tela, o colega tem uma tarefa.
+ */
+.duelo__socorro {
+  display: block;
+  margin-top: 3px;
+  color: var(--destaque);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .duelo__placar-mesa {

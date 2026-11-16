@@ -30,6 +30,7 @@ import { SistemaDeParticulas } from './render/Particulas.js';
 import { AnuncioDeCombo } from './render/AnuncioDeCombo.js';
 
 import { KeyboardInput } from './input/KeyboardInput.js';
+import { GamepadInput } from './input/GamepadInput.js';
 import { TouchInput } from './input/TouchInput.js';
 import { AudioManager } from './audio/AudioManager.js';
 
@@ -183,10 +184,6 @@ function iniciar() {
         document.getElementById('duelo-aviso-1'),
         document.getElementById('duelo-aviso-2'),
       ],
-      combo: [
-        document.getElementById('duelo-combo-1'),
-        document.getElementById('duelo-combo-2'),
-      ],
       proxima: [
         document.getElementById('duelo-proxima-1'),
         document.getElementById('duelo-proxima-2'),
@@ -196,6 +193,7 @@ function iniciar() {
         linhas: document.getElementById(`duelo-linhas-${n}`),
         lixo: document.getElementById(`duelo-lixo-${n}`),
         alvo: document.getElementById(`duelo-alvo-${n}`),
+        caixaDoAlvo: document.getElementById(`duelo-caixa-alvo-${n}`),
       })),
       pressao: document.getElementById('duelo-pressao'),
       pausa: document.getElementById('duelo-pausa'),
@@ -204,16 +202,34 @@ function iniciar() {
       fimDetalhe: document.getElementById('duelo-fim-detalhe'),
       corridaPura: document.getElementById('duelo-corrida-pura'),
       opcaoCorrida: document.getElementById('duelo-opcao-corrida'),
-      dica: document.querySelector('.duelo__dica'),
+      escolhaDeModo: document.getElementById('duelo-escolha-modo'),
+      dica: document.getElementById('duelo-dica'),
       ladoAlado: [...document.querySelectorAll('.duelo__lado')],
       meio: document.querySelector('.duelo__meio'),
       mesa: document.getElementById('duelo-mesa'),
       canvasDaMesa: document.getElementById('mesa-canvas'),
       fichaDaMesa: [1, 2].map((n) => ({
         caixa: document.querySelector(`.duelo__ficha--${n}`),
-        pontos: document.getElementById(`mesa-pontos-${n}`),
         linhas: document.getElementById(`mesa-linhas-${n}`),
+        aviso: document.getElementById(`mesa-aviso-${n}`),
       })),
+      anuncio: [1, 2].map((n) => ({
+        caixa: document.getElementById(`duelo-combo-${n}`),
+        professores: document.getElementById(`duelo-combo-professores-${n}`),
+        nome: document.getElementById(`duelo-combo-nome-${n}`),
+        descricao: document.getElementById(`duelo-combo-descricao-${n}`),
+        detalhe: document.getElementById(`duelo-combo-detalhe-${n}`),
+      })),
+      anuncioDaMesa: {
+        caixa: document.getElementById('mesa-combo'),
+        quem: document.getElementById('mesa-combo-quem'),
+        professores: document.getElementById('mesa-combo-professores'),
+        nome: document.getElementById('mesa-combo-nome'),
+        descricao: document.getElementById('mesa-combo-descricao'),
+        detalhe: document.getElementById('mesa-combo-detalhe'),
+      },
+      pontosDaDupla: document.getElementById('mesa-pontos'),
+      linhasDaDupla: document.getElementById('mesa-linhas'),
       risco: document.getElementById('mesa-risco'),
       botaoRevanche: document.getElementById('duelo-revanche'),
       botaoSair: document.getElementById('duelo-sair'),
@@ -373,6 +389,20 @@ function iniciar() {
 
   const teclado = new KeyboardInput(executarComando);
   teclado.ligar();
+
+  /*
+   * O controle vale para os modos de um jogador também, não só para o duelo.
+   *
+   * Ele fala o MESMO vocabulário de comandos do teclado ('esquerda',
+   * 'hardDrop', 'pausa'…), então entra pela mesma porta — `executarComando` —
+   * e nenhuma regra de jogo precisou saber que existe um controle.
+   *
+   * Diferente do teclado, a Gamepad API não avisa quando um botão é apertado:
+   * é preciso PERGUNTAR o estado a cada quadro. Por isso ele aparece de novo
+   * dentro do laço, ao lado de `teclado.atualizar`.
+   */
+  const controle = new GamepadInput(executarComando, { indice: 0 });
+  controle.ligar();
 
   const toque = new TouchInput(executarComando, el.canvas, el.controlesToque);
   if (TouchInput.disponivel()) {
@@ -805,6 +835,7 @@ function iniciar() {
     duelo.atualizar(delta);
 
     teclado.atualizar(delta * fatorDoTempo);
+    controle.atualizar(delta * fatorDoTempo);
     jogo.update(delta * fatorDoTempo);
     efeitosVisuais.atualizar(delta);
     particulas.atualizar(delta);
@@ -893,6 +924,7 @@ function iniciar() {
     configuracoes,
     audio,
     teclado,
+    controle,
     particulas,
     efeitosVisuais,
     anuncio,
@@ -916,6 +948,7 @@ function iniciar() {
         fator = HITSTOP_FATOR;
       }
       teclado.atualizar(deltaMs * fator);
+      controle.atualizar(deltaMs * fator);
       jogo.update(deltaMs * fator);
       efeitosVisuais.atualizar(deltaMs);
       particulas.atualizar(deltaMs);

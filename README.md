@@ -43,9 +43,10 @@ Não há `npm install`: o projeto **não tem nenhuma dependência externa**. Nem
 - 5 modos de um jogador: **Maratona**, **Sprint** (40 linhas), **Ultra** (2 minutos), **Zen** (sem fim) e **Professores**
 
 **Dois jogadores na mesma tela**
-- **Dois tabuleiros**: cada um no seu. Limpar linhas envia lixo para o adversário, e os poderes de professor podem ser mirados nele. Perde quem estourar primeiro.
-- **Um tabuleiro, duas peças**: os dois disputam o mesmo tabuleiro, cada um com a sua peça caindo ao mesmo tempo. A linha é creditada a quem a fechou, e dá para bloquear o espaço do outro.
+- **Dois tabuleiros** — disputa: cada um no seu. Limpar linhas envia lixo para o adversário, e os poderes de professor podem ser mirados nele. Perde quem estourar primeiro. Dá para jogar com **Professores** ou com o **Tetris clássico**, à escolha.
+- **Um tabuleiro, duas peças** — cooperativo: os dois dividem o mesmo tabuleiro e a **mesma pontuação**. Quem fica sem espaço para a peça nascer **espera** em vez de perder, e volta assim que o colega abrir uma linha. O jogo só acaba quando os dois estão parados. Tabuleiro de 12 colunas, e o nível sobe a cada 20 linhas.
 - Teclado dividido (WASD e setas) ou **dois controles de videogame**, pela Gamepad API
+- A combinação de professor feita aparece **no tabuleiro de quem a fez**, com as bombas dos dois professores envolvidos
 
 **Modo Professores Especiais**
 - Algumas peças trazem um bloco marcado com um professor
@@ -92,6 +93,7 @@ Não há `npm install`: o projeto **não tem nenhuma dependência externa**. Nem
 - Tudo desligado automaticamente com "Reduzir movimento"
 
 **Outros**
+- **Controle de videogame em todos os modos**, de um ou dois jogadores, pela Gamepad API
 - **PWA**: instalável no celular e jogável sem internet
 - Controles de toque com gestos, para jogar no celular
 - Áudio 100% sintetizado — nenhum arquivo de som no projeto
@@ -179,7 +181,7 @@ tetris-pi/
 │   ├── icons/                  Ícones do PWA
 │   └── skins/                  (vazia) destino das fotos usadas como peças
 ├── capturas/                   Imagens usadas neste README
-├── tests/                      162 testes, rodando sem navegador
+├── tests/                      165 testes, rodando sem navegador
 ├── scripts/dev-server.mjs      Servidor local (Node puro)
 └── docs/
     ├── ARQUITETURA.md          Como as camadas se separam e por quê
@@ -225,7 +227,7 @@ O detalhamento está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 npm test
 ```
 
-Os 162 testes cobrem colisão, rotação SRS com *wall kick*, limpeza de 1 a 4 linhas, pontuação, progressão de nível, sorteio 7-bag, regras de cada modo, o motor completo, o sistema de skins, a persistência, as 15 combinações de professores, as regras do duelo (lixo enviado, cancelamento e mira) e as do tabuleiro compartilhado (colisão entre as duas peças, crédito da linha e eliminação).
+Os 165 testes cobrem colisão, rotação SRS com *wall kick*, limpeza de 1 a 4 linhas, pontuação, progressão de nível, sorteio 7-bag, regras de cada modo, o motor completo, o sistema de skins, a persistência, as 15 combinações de professores, as regras do duelo (lixo enviado, cancelamento e mira) e as do cooperativo (colisão entre as duas peças, crédito da linha, a espera de quem não consegue nascer e o resgate pelo colega).
 
 Eles rodam **no terminal, sem abrir navegador** — o que é a prova prática do isolamento entre lógica e interface. Se algum dia esses testes precisarem de um canvas para rodar, será sinal de que a separação foi quebrada.
 

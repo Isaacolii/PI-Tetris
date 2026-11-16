@@ -154,11 +154,13 @@ test('a linha é de quem a fechou, não de quem pôs mais blocos nela', () => {
   mesa.em('linhasLimpas', (e) => { creditado = e.jogador; });
   mesa.hardDrop(0);
 
-  assert.equal(creditado, 0, 'quem fecha leva — é a regra que dá para ter na cabeça jogando');
+  assert.equal(creditado, 0, 'quem fechou aparece no evento, para a tela saber de onde partiu');
   assert.equal(mesa.pilotos[0].linhasFechadas, 1);
   assert.equal(mesa.pilotos[1].linhasFechadas, 0);
-  assert.ok(mesa.pilotos[0].pontuacao.pontos > 0);
-  assert.equal(mesa.pilotos[1].pontuacao.pontos, 0);
+
+  // Os PONTOS, porém, são da dupla: é o que torna o modo cooperativo.
+  assert.ok(mesa.equipe.pontos > 0);
+  assert.equal(mesa.equipe.linhas, 1);
 });
 
 test('a limpeza informa a cor de cada bloco destruído, não só quais linhas', () => {
@@ -167,8 +169,9 @@ test('a limpeza informa a cor de cada bloco destruído, não só quais linhas', 
   const ultima = grid.totalDeLinhas - 1;
 
   // Cores diferentes de propósito: a tela pinta cada estilhaço com a sua.
-  const cores = ['T', 'I', 'S', 'L', 'O', 'Z', 'J', 'T', 'I', 'S'];
-  for (let c = 0; c < grid.colunas; c++) if (c !== 4 && c !== 5) grid.celulas[ultima][c] = cores[c];
+  const paleta = ['T', 'I', 'S', 'L', 'O', 'Z', 'J'];
+  const cor = (c) => paleta[c % paleta.length];
+  for (let c = 0; c < grid.colunas; c++) if (c !== 4 && c !== 5) grid.celulas[ultima][c] = cor(c);
 
   posicionar(mesa, 0, 'O', ultima - 1, 4);
   mesa.pilotos[1].peca = null;
@@ -186,8 +189,8 @@ test('a limpeza informa a cor de cada bloco destruído, não só quais linhas', 
 
   // A fotografia é de ANTES da remoção: depois dela a cor já não existe em
   // lugar nenhum, e os estilhaços sairiam todos brancos.
-  assert.equal(tipos[0], 'T');
-  assert.equal(tipos[6], 'J');
+  assert.equal(tipos[0], cor(0));
+  assert.equal(tipos[6], cor(6));
   assert.ok(tipos[4], 'a célula que o jogador acabou de pôr também está na foto');
   assert.ok(
     tipos.every(Boolean),
@@ -197,28 +200,116 @@ test('a limpeza informa a cor de cada bloco destruído, não só quais linhas', 
 
 // ───────────────────────────── Eliminação ─────────────────────────────
 
-test('quem não consegue fazer a peça nascer é eliminado, e o outro vence', () => {
+test('quem não consegue fazer a peça nascer fica esperando, e o jogo continua', () => {
   const mesa = mesaLimpa();
   const grid = mesa.grid;
 
   // Entope a área de nascimento do jogador 2.
   for (let linha = 0; linha < 4; linha++) {
-    for (let coluna = 4; coluna < 9; coluna++) grid.celulas[linha][coluna] = 'X';
+    for (let coluna = 6; coluna < 11; coluna++) grid.celulas[linha][coluna] = 'X';
   }
 
   let fim = null;
-  let eliminado = null;
+  let esperando = null;
   mesa.em('fimDaMesa', (e) => { fim = e; });
-  mesa.em('jogadorEliminado', (e) => { eliminado = e.jogador; });
+  mesa.em('jogadorEsperando', (e) => { esperando = e.jogador; });
 
   // Força o jogador 2 a pedir peça nova.
   mesa.pilotos[1].peca = new PecaAtiva('I', 18, 0);
   mesa.hardDrop(1);
 
-  assert.equal(eliminado, 1);
-  assert.ok(fim, 'o fim da mesa tem de ser anunciado');
-  assert.equal(fim.vencedor, 0);
+  assert.equal(esperando, 1);
+  assert.equal(mesa.pilotos[1].esperando, true);
+  assert.equal(mesa.encerrada, false, 'um parado não acaba o jogo: o outro pode resgatá-lo');
+  assert.equal(fim, null);
+  assert.ok(mesa.pilotos[0].peca, 'o jogador 1 continua jogando');
+});
+
+test('o jogo só acaba quando os DOIS estão esperando', () => {
+  const mesa = mesaLimpa();
+  const grid = mesa.grid;
+
+  /*
+   * Entope as duas áreas de nascimento deixando a ÚLTIMA coluna livre.
+   *
+   * Encher a linha inteira seria um tiro no pé: ela viraria linha completa e
+   * o primeiro travamento a limparia, reabrindo justamente o espaço que o
+   * teste quer fechar.
+   */
+  for (let linha = 0; linha < 4; linha++) {
+    for (let coluna = 0; coluna < grid.colunas - 1; coluna++) grid.celulas[linha][coluna] = 'X';
+  }
+
+  let fim = null;
+  mesa.em('fimDaMesa', (e) => { fim = e; });
+
+  for (const indice of [0, 1]) {
+    mesa.pilotos[indice].peca = new PecaAtiva('I', 18, 0);
+    mesa.hardDrop(indice);
+  }
+
+  assert.ok(fim, 'com ninguém podendo pôr peça, nada mais muda no tabuleiro');
   assert.equal(mesa.encerrada, true);
+  assert.equal('vencedor' in fim, false, 'é cooperativo: não há vencedor');
+  assert.ok('pontos' in fim && 'linhas' in fim, 'o fim traz o resultado da dupla');
+});
+
+test('limpar uma linha devolve ao jogo o colega que estava esperando', () => {
+  const mesa = mesaLimpa();
+  const grid = mesa.grid;
+  const ultima = grid.totalDeLinhas - 1;
+
+  // Jogador 2 sem espaço para nascer.
+  for (let linha = 0; linha < 4; linha++) {
+    for (let coluna = 6; coluna < 11; coluna++) grid.celulas[linha][coluna] = 'X';
+  }
+  mesa.pilotos[1].peca = new PecaAtiva('I', 18, 0);
+  mesa.hardDrop(1);
+  assert.equal(mesa.pilotos[1].esperando, true);
+
+  // Abre a área dele e deixa a mesa rodar um quadro.
+  for (let linha = 0; linha < 4; linha++) {
+    for (let coluna = 0; coluna < grid.colunas; coluna++) grid.celulas[linha][coluna] = null;
+  }
+
+
+  let voltou = null;
+  mesa.em('jogadorVoltou', (e) => { voltou = e.jogador; });
+  mesa.rodando = true;
+  mesa.update(16);
+
+  assert.equal(voltou, 1, 'abriu espaço, o colega volta sozinho');
+  assert.equal(mesa.pilotos[1].esperando, false);
+  assert.ok(mesa.pilotos[1].peca);
+  assert.equal(ultima > 0, true);
+});
+
+test('esperar não consome o saco de peças', () => {
+  const mesa = mesaLimpa();
+  const grid = mesa.grid;
+
+  for (let linha = 0; linha < 4; linha++) {
+    for (let coluna = 6; coluna < 11; coluna++) grid.celulas[linha][coluna] = 'X';
+  }
+  mesa.pilotos[1].peca = new PecaAtiva('I', 18, 0);
+  mesa.hardDrop(1);
+
+  const retida = mesa.pilotos[1].tipoRetido;
+  assert.ok(retida, 'a peça que não coube fica guardada');
+
+  // Cem quadros esperando: sem retenção, seriam cem peças tiradas do saco.
+  mesa.rodando = true;
+  for (let i = 0; i < 100; i++) mesa.update(16);
+
+  assert.equal(mesa.pilotos[1].tipoRetido, retida, 'continua a mesma peça');
+
+  // Abre espaço: ele volta COM a peça que já tinha sido sorteada.
+  for (let linha = 0; linha < 4; linha++) {
+    for (let coluna = 0; coluna < grid.colunas; coluna++) grid.celulas[linha][coluna] = null;
+  }
+  mesa.update(16);
+
+  assert.equal(mesa.pilotos[1].peca.tipo, retida);
 });
 
 test('depois do fim, nenhum comando funciona', () => {
@@ -294,7 +385,7 @@ test('o placar traz os dois jogadores', () => {
 
   assert.equal(placar.length, 2);
   for (const linha of placar) {
-    for (const campo of ['pontos', 'linhas', 'nivel', 'eliminado', 'reserva']) {
+    for (const campo of ['pontos', 'linhas', 'nivel', 'esperando', 'reserva']) {
       assert.ok(campo in linha, `falta ${campo}`);
     }
   }
@@ -314,15 +405,15 @@ test('a ocupação vai de 0 com o tabuleiro vazio a perto de 1 com ele cheio', (
 test('reiniciar limpa o tabuleiro e devolve os dois jogadores ao jogo', () => {
   const mesa = mesaLimpa();
   mesa.grid.celulas[20][0] = 'X';
-  mesa.pilotos[1].eliminado = true;
+  mesa.pilotos[1].esperando = true;
   mesa.encerrada = true;
 
   mesa.reiniciar();
 
   assert.equal(contarBlocos(mesa.grid), 0);
-  assert.equal(mesa.pilotos[1].eliminado, false);
+  assert.equal(mesa.pilotos[1].esperando, false);
   assert.equal(mesa.encerrada, false);
-  assert.equal(mesa.vencedor, null);
+  assert.equal(mesa.equipe.pontos, 0, 'a pontuação da dupla zera junto');
 });
 
 // ───────────────────────────── Professores na mesa ─────────────────────────

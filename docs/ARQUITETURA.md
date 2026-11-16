@@ -55,11 +55,6 @@ A partir daí, "o que é um T" é uma pergunta que só a camada de renderizaçã
                   ┌─────────────┐  ┌────────────┐
                   │   audio/    │  │    ui/     │
                   └─────────────┘  └────────────┘
-                                          │
-                                          ▼
-                                   ┌────────────┐
-                                   │    ai/     │──▶ api/analisar.js
-                                   └────────────┘      (servidor)
 ```
 
 ### Sentido das dependências

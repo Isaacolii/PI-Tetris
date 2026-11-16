@@ -30,6 +30,8 @@ import {
   MAPA_COMPARTILHADO,
 } from '../input/KeyboardInput.js';
 import { GamepadInput } from '../input/GamepadInput.js';
+import { AnuncioDeCombo } from '../render/AnuncioDeCombo.js';
+import { PROFESSORES } from '../core/Professores.js';
 
 /** Cor de cada jogador, para a plateia saber de quem é cada tabuleiro. */
 const CORES_DO_JOGADOR = ['#5ad2f0', '#ffb74d'];
@@ -74,6 +76,23 @@ export class TelaVersus {
     this.particulasDaMesa = new SistemaDeParticulas();
 
     /*
+     * O MESMO anúncio do modo de um jogador, reaproveitado inteiro — um por
+     * tabuleiro.
+     *
+     * Ele já sabe montar os distintivos, escrever o nome, a frase do que o
+     * poder faz e os números. Escrever um anúncio "do duelo" seria manter
+     * dois textos que precisam dizer a mesma coisa — e que divergiriam na
+     * primeira vez que alguém mexesse só em um.
+     *
+     * São instâncias SEPARADAS, e não uma compartilhada, porque cada uma
+     * guarda o próprio relógio de esconder: com uma só, o segundo poder
+     * cancelaria o timer do primeiro e apagaria um anúncio que ainda estava
+     * no ar do outro lado da tela.
+     */
+    this.anuncios = [0, 1].map((i) => new AnuncioDeCombo(this.el.anuncio?.[i] ?? {}, skins));
+    this.anuncioDaMesa = new AnuncioDeCombo(this.el.anuncioDaMesa ?? {}, skins);
+
+    /*
      * Trocar o tipo de duelo reinicia a partida de propósito.
      *
      * Ligar "corrida pura" no meio do jogo deixaria lixo já enviado a caminho,
@@ -100,6 +119,7 @@ export class TelaVersus {
     this.formato = 'lado-a-lado';
 
     this.el.corridaPura?.addEventListener('change', () => this.reiniciar());
+    this.el.escolhaDeModo?.addEventListener('change', () => this.reiniciar());
 
     this.el.botaoRevanche?.addEventListener('click', () => this.reiniciar());
     this.el.botaoSair?.addEventListener('click', () => this.aoSair?.());
@@ -214,15 +234,32 @@ export class TelaVersus {
   iniciar({ formato, interferencia } = {}) {
     if (formato) this.formato = formato;
 
+    const modo = this.modoEscolhido();
+
     if (this.ehMesa) {
       this.duelo = null;
-      this.mesa = new MesaCompartilhada({ comProfessores: true });
+      this.mesa = new MesaCompartilhada({ comProfessores: modo === 'professores' });
       this.#ligarEventosDaMesa();
     } else {
       this.mesa = null;
       const comInterferencia = interferencia ?? !this.el.corridaPura?.checked;
-      this.duelo = new Versus({ modo: 'professores', interferencia: comInterferencia });
+      this.duelo = new Versus({ modo, interferencia: comInterferencia });
       this.#ligarEventosDoDuelo();
+    }
+
+    this.modoEmJogo = modo;
+    this.#atualizarDica(modo);
+
+    /*
+     * Sem professores não há poder, logo não há onde mirar.
+     *
+     * Deixar "Poder mira: Em mim" num Tetris clássico é pior do que não
+     * mostrar nada: o jogador procura o botão que muda aquilo e não existe.
+     */
+    const temMira = modo === 'professores';
+    for (const indice of [0, 1]) {
+      const caixa = this.el.painel?.[indice]?.caixaDoAlvo;
+      if (caixa) caixa.hidden = !temMira;
     }
 
     this.#mostrarFormato();
@@ -234,6 +271,8 @@ export class TelaVersus {
     for (const entradas of this.entradas) for (const e of entradas) e.ligar();
     this.entradaCompartilhada.ligar();
 
+    for (const anuncio of this.anuncios) anuncio.esconder();
+    this.anuncioDaMesa.esconder();
     for (const efeito of this.efeitos) efeito.limpar();
     for (const sistema of this.particulas) sistema.limpar();
     this.efeitoDaMesa.limpar();
@@ -256,13 +295,21 @@ export class TelaVersus {
     // "Corrida pura" é regra de dois tabuleiros: num só, não há para onde
     // mandar lixo. Esconder é mais honesto do que deixar um controle inerte.
     if (this.el.opcaoCorrida) this.el.opcaoCorrida.hidden = mesa;
-    // A dica explica a corrida pura; sem a caixa, ela descreve regra que não
-    // existe neste formato.
-    if (this.el.dica) this.el.dica.hidden = mesa;
+
+    /*
+     * A dica fica nos DOIS formatos.
+     *
+     * Ela era escondida aqui quando só falava da corrida pura. Agora explica
+     * também as regras do cooperativo — que são as menos óbvias do jogo
+     * inteiro, porque "esperar" e "resgatar" não existem em nenhum Tetris.
+     */
+    if (this.el.dica) this.el.dica.hidden = false;
   }
 
   parar() {
     this.rodando = false;
+    for (const anuncio of this.anuncios) anuncio.esconder();
+    this.anuncioDaMesa.esconder();
     this.el.secao.hidden = true;
 
     for (const entradas of this.entradas) for (const e of entradas) e.desligar();
@@ -271,6 +318,18 @@ export class TelaVersus {
 
   reiniciar() {
     if (!this.partida) return;
+
+    /*
+     * Trocar de modo exige partida NOVA, não um reinício.
+     *
+     * O modo decide quais peças o motor sorteia e se existem professores;
+     * é escolhido na construção, não um interruptor. Reaproveitar a partida
+     * deixaria o jogo rodando no modo antigo com a tela dizendo o novo.
+     */
+    if (this.modoEscolhido() !== this.modoEmJogo) {
+      this.iniciar({ formato: this.formato });
+      return;
+    }
 
     if (this.ehMesa) this.mesa.reiniciar();
     else this.duelo.reiniciar({ interferencia: !this.el.corridaPura?.checked });
@@ -441,7 +500,7 @@ export class TelaVersus {
           this.particulas[indice],
           jogo.grid,
         );
-        this.#anunciar(indice, relatorio.nome);
+        this.#anunciar(indice, relatorio);
       });
 
       jogo.em('linhasLimpas', ({ quantidade, blocosEliminados }) => {
@@ -488,19 +547,26 @@ export class TelaVersus {
         this.particulasDaMesa,
         this.mesa.grid,
       );
+      this.#anunciar(relatorio.jogador ?? 0, relatorio);
     });
 
-    this.mesa.em('jogadorEliminado', ({ jogador }) => {
-      this.audio?.tocar('fimDeJogo');
-      this.#piscar(jogador, 'fora');
+    this.mesa.em('jogadorEsperando', ({ jogador }) => {
+      // Não é derrota — é um pedido de socorro. O som é de alerta, não de fim.
+      this.audio?.tocar('alerta');
+      this.#avisarNaMesa(jogador, 'Sem espaço! Abra uma linha');
     });
 
-    this.mesa.em('fimDaMesa', ({ vencedor }) => {
+    this.mesa.em('jogadorVoltou', ({ jogador }) => {
+      this.audio?.tocar('nivel');
+      this.#avisarNaMesa(jogador, 'Voltou ao jogo');
+    });
+
+    this.mesa.em('fimDaMesa', ({ pontos, linhas, nivel }) => {
       const placar = this.mesa.placar();
-      this.el.fimTitulo.textContent =
-        vencedor === null ? 'Empate' : `Jogador ${vencedor + 1} venceu`;
+      this.el.fimTitulo.textContent = `${pontos.toLocaleString('pt-BR')} pontos`;
       this.el.fimDetalhe.textContent =
-        `O tabuleiro encheu · ${placar[0].pontos} a ${placar[1].pontos} pontos`;
+        `O tabuleiro encheu para os dois · ${linhas} linhas, nível ${nivel} · ` +
+        `Jogador 1 fechou ${placar[0].linhas} e Jogador 2 fechou ${placar[1].linhas}`;
       this.el.fim.hidden = false;
     });
   }
@@ -511,23 +577,90 @@ export class TelaVersus {
    * O anúncio grande do modo de um jogador não serve aqui: ele cobriria
    * metade de um tabuleiro que já é menor, e o adversário continua jogando.
    */
-  #anunciar(indice, nome) {
-    const faixa = this.el.combo?.[indice];
-    if (!faixa || !nome) return;
+  /**
+   * Mostra a combinação feita, com as bombas dos dois professores.
+   *
+   * @param {number} indice        quem fez
+   * @param {Object} relatorio     saída do poder
+   */
+  #anunciar(indice, relatorio) {
+    if (!relatorio?.nome) return;
 
-    /*
-     * Elemento e relógio SEPARADOS do aviso de lixo.
-     *
-     * Os dois acontecem no mesmo instante — o poder que explode é o mesmo
-     * que manda lixo — e, dividindo o mesmo elemento, o segundo apagaria o
-     * primeiro: o jogador veria "+3" e nunca o nome da combinação que fez.
-     */
-    faixa.textContent = nome;
-    faixa.hidden = false;
+    const professores = (relatorio.professores ?? []).map(
+      (id) => PROFESSORES[id] ?? { id, nome: id },
+    );
 
-    this._relogioDoCombo ??= [];
-    clearTimeout(this._relogioDoCombo[indice]);
-    this._relogioDoCombo[indice] = setTimeout(() => { faixa.hidden = true; }, 1400);
+    if (this.ehMesa) {
+      // Tabuleiro compartilhado: a posição não diz de quem foi, então o nome
+      // do jogador precisa estar escrito.
+      if (this.el.anuncioDaMesa?.quem) {
+        this.el.anuncioDaMesa.quem.textContent = `Jogador ${indice + 1}`;
+      }
+      this.anuncioDaMesa.mostrar(relatorio, professores);
+      return;
+    }
+
+    // Dois tabuleiros: o anúncio nasce dentro da moldura de quem fez, e por
+    // isso não leva rótulo — o lado da tela já responde "de quem foi".
+    this.anuncios[indice]?.mostrar(relatorio, professores);
+  }
+
+
+  /**
+   * Qual modo os dois vão jogar: 'professores' ou 'maratona'.
+   *
+   * Lido da tela na hora de montar a partida, e não guardado em campo, porque
+   * o jogador pode trocar o rádio entre uma partida e outra: a fonte da
+   * verdade é o que está marcado agora.
+   */
+  modoEscolhido() {
+    const marcado = this.el.escolhaDeModo?.querySelector('input:checked');
+    return marcado?.value === 'maratona' ? 'maratona' : 'professores';
+  }
+
+  /** Explica, em uma frase, o que as opções marcadas fazem. */
+  #atualizarDica(modo) {
+    if (!this.el.dica) return;
+
+    if (this.ehMesa) {
+      this.el.dica.textContent =
+        modo === 'professores'
+          ? 'Os dois somam a MESMA pontuação. Quem ficar sem espaço espera — limpe uma linha para trazê-lo de volta. As bombas de professor valem para a dupla.'
+          : 'Os dois somam a MESMA pontuação. Quem ficar sem espaço espera — limpe uma linha para trazê-lo de volta.';
+      return;
+    }
+
+    const corrida = this.el.corridaPura?.checked;
+    const base = corrida
+      ? 'Cada um joga o seu e ganha quem sobreviver.'
+      : 'Limpar linhas envia lixo para o adversário.';
+    const extra =
+      modo === 'professores' && !corrida
+        ? ' Os poderes de professor podem ser mirados nele.'
+        : modo === 'professores'
+          ? ' Os poderes de professor agem no próprio tabuleiro.'
+          : ' Sem professores: é o Tetris clássico, um contra um.';
+
+    this.el.dica.textContent = base + extra;
+  }
+
+  /**
+   * Recado curto na ficha de um jogador da mesa.
+   *
+   * Vai na ficha, e não sobre o tabuleiro, porque o tabuleiro é um só e um
+   * aviso em cima dele não diria de QUEM é — que é justamente a informação
+   * que o colega precisa para saber quem resgatar.
+   */
+  #avisarNaMesa(indice, texto) {
+    const campo = this.el.fichaDaMesa?.[indice]?.aviso;
+    if (!campo) return;
+
+    campo.textContent = texto;
+    campo.hidden = false;
+
+    this._relogioDoSocorro ??= [];
+    clearTimeout(this._relogioDoSocorro[indice]);
+    this._relogioDoSocorro[indice] = setTimeout(() => { campo.hidden = true; }, 2200);
   }
 
   /** Marca visualmente o tabuleiro que vai receber lixo. */
@@ -612,10 +745,14 @@ export class TelaVersus {
       const ficha = this.el.fichaDaMesa?.[indice];
       if (!ficha) continue;
 
-      ficha.pontos.textContent = placar[indice].pontos.toLocaleString('pt-BR');
       ficha.linhas.textContent = placar[indice].linhas;
-      ficha.caixa?.classList.toggle('duelo__ficha--fora', placar[indice].eliminado);
+      ficha.caixa?.classList.toggle('duelo__ficha--fora', placar[indice].esperando);
     }
+
+    if (this.el.pontosDaDupla) {
+      this.el.pontosDaDupla.textContent = this.mesa.equipe.pontos.toLocaleString('pt-BR');
+    }
+    if (this.el.linhasDaDupla) this.el.linhasDaDupla.textContent = this.mesa.equipe.linhas;
 
     // A altura da pilha substitui a barra de pressão: num tabuleiro só não há
     // "quem está melhor", há "quanto falta para acabar".

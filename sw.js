@@ -25,7 +25,7 @@
  * Aumente o número sempre que publicar uma alteração, senão os navegadores que
  * já visitaram o site continuarão servindo a versão anterior.
  */
-const VERSAO = 'tetris-pi-v7';
+const VERSAO = 'tetris-pi-v10';
 
 /** Arquivos guardados assim que o jogo é aberto pela primeira vez. */
 const ARQUIVOS_ESSENCIAIS = [

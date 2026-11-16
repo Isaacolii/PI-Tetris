@@ -15,8 +15,17 @@ export const NOMES_DE_LIMPEZA = { 1: 'Simples', 2: 'Dupla', 3: 'Tripla', 4: 'Tet
 const LINHAS_POR_NIVEL = 10;
 
 export class ScoreSystem {
-  constructor(nivelInicial = 1) {
+  /**
+   * @param {number} [nivelInicial]
+   * @param {number} [linhasPorNivel] quantas linhas sobem um nível. O padrão
+   *   de 10 é o do Tetris Guideline e vale para um jogador. No coop, onde
+   *   duas pessoas limpam no mesmo tabuleiro, as linhas chegam cerca do dobro
+   *   mais rápido: manter 10 faria a gravidade disparar na metade do tempo e
+   *   a partida acabar cedo demais sem que ninguém tivesse jogado pior.
+   */
+  constructor(nivelInicial = 1, linhasPorNivel = LINHAS_POR_NIVEL) {
     this.nivelInicial = nivelInicial;
+    this.linhasPorNivel = linhasPorNivel;
     this.reiniciar();
   }
 
@@ -49,7 +58,7 @@ export class ScoreSystem {
     this.linhas += quantidade;
     this.limpezas[quantidade]++;
     this.sequenciaDeTetris = quantidade === 4;
-    this.nivel = this.nivelInicial + Math.floor(this.linhas / LINHAS_POR_NIVEL);
+    this.nivel = this.nivelInicial + Math.floor(this.linhas / this.linhasPorNivel);
 
     return { pontos: ganho, bonusSequencia, tipo: NOMES_DE_LIMPEZA[quantidade] };
   }
@@ -78,7 +87,7 @@ export class ScoreSystem {
     const base = (PONTOS_POR_LIMPEZA[Math.min(quantidade, 4)] ?? 0) * this.nivel;
     this.pontos += base;
     this.linhas += quantidade;
-    this.nivel = this.nivelInicial + Math.floor(this.linhas / LINHAS_POR_NIVEL);
+    this.nivel = this.nivelInicial + Math.floor(this.linhas / this.linhasPorNivel);
 
     return { pontos: base, porPoder: true };
   }
