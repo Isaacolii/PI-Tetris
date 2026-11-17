@@ -105,6 +105,7 @@ export class CanvasRenderer {
     particulas = null,
     pecas = null,
     fantasmas = null,
+    deslize = 0,
   }) {
     const ctx = this.ctx;
     const area = this.#areaDoTabuleiro();
@@ -171,8 +172,13 @@ export class CanvasRenderer {
        * mesmo tipo, e aí são idênticas. A cor do bloco é do TIPO da peça; a
        * cor da borda é de QUEM a controla.
        */
-      const { peca: emFoco, contorno } = emJogo.peca ? emJogo : { peca: emJogo, contorno: null };
-      this.#pintarPeca(ctx, emFoco, grid.linhasOcultas, { contorno });
+      const { peca: emFoco, contorno, deslize: proprio } = emJogo.peca
+        ? emJogo
+        : { peca: emJogo, contorno: null, deslize };
+      this.#pintarPeca(ctx, emFoco, grid.linhasOcultas, {
+        contorno,
+        deslize: proprio ?? 0,
+      });
     }
 
     // 6b. Animações dos poderes especiais — puramente decorativas: o tabuleiro
@@ -252,6 +258,25 @@ export class CanvasRenderer {
   #pintarPeca(ctx, peca, linhasOcultas, opcoes = {}) {
     const celulas = peca.celulasOcupadas();
 
+    /*
+     * A queda contínua acontece AQUI e em nenhum outro lugar.
+     *
+     * O motor move a peça de célula em célula — não mudamos isso, porque é o
+     * que mantém a colisão e os testes exatos. O que muda é só onde a peça é
+     * desenhada: um deslocamento de `deslize` células para baixo, igual à
+     * fração do caminho que o relógio já percorreu. O jogo continua discreto;
+     * só a imagem é contínua.
+     *
+     * O deslocamento vai no contexto, e não nas coordenadas de cada célula,
+     * para o contorno do duelo acompanhar a peça sem contas repetidas.
+     */
+    const deslize = opcoes.deslize ?? 0;
+    const deslocado = deslize > 0;
+    if (deslocado) {
+      ctx.save();
+      ctx.translate(0, deslize * this.tamanhoDaCelula);
+    }
+
     // O contorno vai POR CIMA de todas as células da peça, depois de pintadas:
     // desenhar célula a célula deixaria as bordas internas à mostra e a peça
     // pareceria quatro quadrados soltos em vez de uma peça só.
@@ -280,6 +305,8 @@ export class CanvasRenderer {
       if (linhaVisivel < 0) continue;
       this.#pintarCelula(ctx, linhaVisivel, coluna, peca.tipo, opcoes, professor);
     }
+
+    if (deslocado) ctx.restore();
   }
 
   /**

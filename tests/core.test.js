@@ -442,3 +442,47 @@ test('o resultado final traz tudo que o ranking e a análise precisam', () => {
   assert.ok('acoesPorMinuto' in resultado.estatisticas);
   assert.ok('buracosCriados' in resultado.estatisticas);
 });
+
+/*
+ * O deslize da queda: o número que torna a peça contínua na tela sem tornar
+ * a física contínua. O que precisa ser verdade é que ele NUNCA desenhe a peça
+ * dentro da pilha — por isso o teto é a distância livre até o chão.
+ */
+test('o deslize da queda avança com o relógio e para quando a peça encosta', () => {
+  const jogo = new GameEngine({ modo: 'zen', semente: 3 });
+  jogo.iniciar();
+
+  assert.equal(jogo.deslizeDaQueda, 0, 'peça recém-nascida ainda não andou nada');
+
+  const intervalo = jogo.pontuacao.intervaloDeQueda();
+  jogo.update(intervalo * 0.5);
+  const meio = jogo.deslizeDaQueda;
+  assert.ok(meio > 0.4 && meio < 0.6, `metade do intervalo devia dar ~0,5, deu ${meio}`);
+
+  // Encostada no fundo: nada mais a percorrer, senão a peça entraria no chão.
+  // Menos que o atraso de travamento, senão a peça fixa e a próxima nasce.
+  while (jogo.posicaoFantasma().linha > jogo.peca.linha) jogo.softDrop();
+  jogo.update(200);
+  assert.equal(jogo.deslizeDaQueda, 0, 'peça apoiada não desliza');
+});
+
+test('o deslize nunca passa da distância livre até o chão', () => {
+  const jogo = new GameEngine({ modo: 'zen', semente: 4 });
+  jogo.iniciar();
+
+  // Uma célula acima do pouso: por mais tempo que passe, o deslize para em 1.
+  while (jogo.posicaoFantasma().linha - jogo.peca.linha > 1) jogo.softDrop();
+  jogo.update(jogo.pontuacao.intervaloDeQueda() * 0.99);
+
+  assert.ok(jogo.deslizeDaQueda <= 1, `deslize ${jogo.deslizeDaQueda} passou da casa livre`);
+});
+
+test('fora da partida o deslize é zero', () => {
+  const jogo = new GameEngine({ modo: 'zen', semente: 5 });
+  assert.equal(jogo.deslizeDaQueda, 0, 'no menu não há peça caindo');
+
+  jogo.iniciar();
+  jogo.update(jogo.pontuacao.intervaloDeQueda() * 0.5);
+  jogo.pausar();
+  assert.equal(jogo.deslizeDaQueda, 0, 'em pausa a peça fica parada onde está');
+});

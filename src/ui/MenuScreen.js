@@ -156,7 +156,7 @@ export class MenuScreen {
     for (const formato of formatos) {
       const cartao = document.createElement('button');
       cartao.type = 'button';
-      cartao.className = 'modo modo--duelo';
+      cartao.className = 'modo';
       cartao.dataset.modo = formato.id;
       cartao.setAttribute('aria-label', `Jogar ${formato.nome}, dois jogadores`);
 
@@ -193,11 +193,14 @@ export class MenuScreen {
   mostrar() {
     if (this.el.tela) this.el.tela.hidden = false;
     if (this.el.areaDeJogo) this.el.areaDeJogo.hidden = true;
+    // A chuva acompanha a tela inicial: durante a partida o fundo é do jogo.
+    if (this.el.chuva) this.el.chuva.hidden = false;
     this.montar();
   }
 
   esconder() {
     if (this.el.tela) this.el.tela.hidden = true;
     if (this.el.areaDeJogo) this.el.areaDeJogo.hidden = false;
+    if (this.el.chuva) this.el.chuva.hidden = true;
   }
 }

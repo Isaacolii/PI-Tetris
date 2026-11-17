@@ -36,31 +36,31 @@ export const IDS_DE_PROFESSOR = ['A', 'B', 'C', 'D', 'E'];
 export const PROFESSORES = {
   A: {
     id: 'A',
-    nome: 'Alexandro',
+    nome: 'Caetano',
     tema: 'Explosão',
     descricao: 'Destrói a área ao redor.',
   },
   B: {
     id: 'B',
-    nome: 'Caetano',
+    nome: 'Jhonatta',
     tema: 'Linha',
     descricao: 'Age no sentido horizontal.',
   },
   C: {
     id: 'C',
-    nome: 'Jhonatta',
+    nome: 'Alexandro',
     tema: 'Coluna',
     descricao: 'Age no sentido vertical.',
   },
   D: {
     id: 'D',
-    nome: 'Fabricio',
+    nome: 'Tadeu',
     tema: 'Conversão',
     descricao: 'Preenche os buracos da pilha.',
   },
   E: {
     id: 'E',
-    nome: 'Tadeu',
+    nome: 'Fabricio',
     tema: 'Tempo',
     descricao: 'Altera a velocidade da queda.',
   },

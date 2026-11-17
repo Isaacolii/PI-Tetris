@@ -6,8 +6,30 @@
     <title>Tetris — Projeto Integrador</title>
     <meta
       name="description"
-      content="Jogo estilo Tetris com catálogo de skins trocáveis, estatísticas e análise de desempenho."
+      content="Tetris completo com rotação SRS, cinco modos, dois jogadores na mesma tela e peças que você troca pelas suas fotos."
     />
+
+    <!--
+      Prévia ao compartilhar o link (WhatsApp, Discord, Telegram).
+
+      Sem estas linhas o link aparece como texto cru — e um jogo que circula
+      entre colegas por link precisa se mostrar antes de alguém clicar.
+
+      TROCAR ao publicar: `og:url` e `og:image` precisam da URL COMPLETA do
+      site. A maioria dos leitores de prévia não resolve caminho relativo.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tetris — Projeto Integrador" />
+    <meta property="og:title" content="Encaixe peças. Chame os professores." />
+    <meta
+      property="og:description"
+      content="Tetris completo com rotação SRS, cinco modos, dois jogadores na mesma tela e peças que você troca pelas suas fotos."
+    />
+    <meta property="og:image" content="capturas/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#12141c" />
 
     <!-- PWA: permite instalar o jogo e jogar offline -->
@@ -15,12 +37,43 @@
     <link rel="icon" href="assets/icons/icone.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icons/icone-192.png" />
 
+    <!--
+      As fontes são servidas da própria pasta assets/ (ver o topo do main.css).
+
+      O `preload` existe porque a declaração @font-face está dentro do CSS: sem
+      ele o navegador só descobre o arquivo depois de baixar e interpretar a
+      folha de estilo, e o título da abertura pisca na fonte do sistema.
+    -->
+    <link
+      rel="preload"
+      href="assets/fonts/archivo-black-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="assets/fonts/archivo-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="styles/main.css" />
   </head>
 
   <body>
     <!-- Atalho para quem navega por teclado pular direto ao jogo -->
     <a class="pular-para-conteudo" href="#area-de-jogo">Pular para o jogo</a>
+
+    <!--
+      Peças caindo atrás da tela inicial. Montada por ChuvaDePecas.js, animada
+      só pelo CSS — nenhum quadro de JavaScript. Fica fora do <main> para não
+      entrar na cascata de entrada da tela inicial nem no fluxo do layout.
+
+      `aria-hidden`: é clima, não informação. Quem usa leitor de tela não ganha
+      nada ouvindo dezesseis divs sem texto.
+    -->
+    <div class="chuva" id="chuva-de-pecas" aria-hidden="true"></div>
 
     <header class="cabecalho">
       <h1 class="cabecalho__titulo">
@@ -36,19 +89,19 @@
 
       <nav class="cabecalho__acoes" aria-label="Menu principal">
         <button type="button" class="botao botao--icone" data-abrir="painel-professores" title="Professores">
-          <span aria-hidden="true">🎓</span><span class="botao__rotulo">Professores</span>
+          <svg class="botao__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 9l10 5 10-5-10-5Z"/><path d="M6 11.5V16c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4.5"/></svg><span class="botao__rotulo">Professores</span>
         </button>
         <button type="button" class="botao botao--icone" data-abrir="painel-skins" title="Skins">
-          <span aria-hidden="true">🎨</span><span class="botao__rotulo">Skins</span>
+          <svg class="botao__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 13v8M13 17h8"/></svg><span class="botao__rotulo">Skins</span>
         </button>
         <button type="button" class="botao botao--icone" data-abrir="painel-estatisticas" title="Estatísticas">
-          <span aria-hidden="true">📊</span><span class="botao__rotulo">Estatísticas</span>
+          <svg class="botao__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><rect x="5" y="11" width="4" height="9" rx="1"/><rect x="10" y="5" width="4" height="15" rx="1"/><rect x="15" y="14" width="4" height="6" rx="1"/></svg><span class="botao__rotulo">Estatísticas</span>
         </button>
         <button type="button" class="botao botao--icone" data-abrir="painel-ranking" title="Ranking">
-          <span aria-hidden="true">🏆</span><span class="botao__rotulo">Ranking</span>
+          <svg class="botao__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 5H5v2a3 3 0 0 0 3 3M16 5h3v2a3 3 0 0 1-3 3"/><path d="M12 13v4M9 20h6"/></svg><span class="botao__rotulo">Ranking</span>
         </button>
         <button type="button" class="botao botao--icone" data-abrir="painel-config" title="Configurações">
-          <span aria-hidden="true">⚙️</span><span class="botao__rotulo">Ajustes</span>
+          <svg class="botao__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span class="botao__rotulo">Ajustes</span>
         </button>
       </nav>
     </header>
@@ -56,90 +109,130 @@
     <main class="conteudo">
       <!-- ═══════════════════════ TELA INICIAL ═══════════════════════ -->
       <section class="tela-inicial" id="tela-inicial" aria-labelledby="titulo-inicial">
-        <!-- Coluna da esquerda: o convite e a escolha -->
-        <div class="tela-inicial__principal">
-          <h2 id="titulo-inicial" class="tela-inicial__titulo">
-            Encaixe peças.<br />Chame os professores.
-          </h2>
-          <p class="tela-inicial__resumo">
-            Um Tetris completo com rotação SRS, cinco modos e peças que você pode trocar pelas
-            fotos que quiser — inclusive no meio da partida.
-          </p>
+        <!--
+          O HERÓI é o tabuleiro jogando sozinho.
 
-          <div class="tela-inicial__entrada">
-            <div class="campo campo--nome">
-              <label for="entrada-nome">Seu nome</label>
-              <input
-                type="text"
-                id="entrada-nome"
-                maxlength="24"
-                placeholder="Como quer aparecer no ranking?"
-                autocomplete="nickname"
-              />
-            </div>
+          Antes ele era um quadradinho no canto e o texto ocupava a tela toda.
+          Num jogo, a coisa mais característica do assunto é a peça caindo —
+          não a frase sobre a peça caindo. Quem abre a página vê o jogo
+          acontecendo antes de ler qualquer coisa.
+        -->
+        <div class="capa">
+          <div class="capa__texto">
+            <p class="capa__etiqueta">Projeto Integrador · Unifapce</p>
 
-            <!-- Preenchido por MenuScreen.js quando há recorde registrado -->
-            <div class="recorde" id="recorde-em-destaque" hidden>
-              <span class="recorde__rotulo">Seu recorde</span>
-              <strong class="recorde__valor" id="recorde-valor"></strong>
-              <span class="recorde__modo" id="recorde-modo"></span>
+            <h2 id="titulo-inicial" class="capa__titulo">
+              <span class="capa__linha">Encaixe peças.</span>
+              <span class="capa__linha capa__linha--destaque">Chame os professores.</span>
+            </h2>
+
+            <p class="capa__resumo">
+              Rotação SRS, cinco modos, dois jogadores na mesma tela e peças que você troca
+              pelas suas fotos — no meio da partida, sem recarregar nada.
+            </p>
+
+            <div class="capa__inicio">
+              <div class="campo campo--nome">
+                <label for="entrada-nome">Seu nome</label>
+                <input
+                  type="text"
+                  id="entrada-nome"
+                  maxlength="24"
+                  placeholder="Como quer aparecer no ranking?"
+                  autocomplete="nickname"
+                />
+              </div>
+
+              <!-- Preenchido por MenuScreen.js quando há recorde registrado -->
+              <div class="recorde" id="recorde-em-destaque" hidden>
+                <span class="recorde__rotulo">Seu recorde</span>
+                <strong class="recorde__valor" id="recorde-valor"></strong>
+                <span class="recorde__modo" id="recorde-modo"></span>
+              </div>
             </div>
           </div>
 
           <!--
-            Os modos ficam em dois grupos nomeados.
-
-            Antes os de dois jogadores estavam misturados aos de um, e o
-            formato do duelo era escolhido depois, já dentro da partida, por
-            uma lista suspensa. Escolher COMO se joga tem de ser parte de
-            escolher O QUE se joga — não um ajuste encontrado depois.
+            O MESMO CanvasRenderer da partida real desenha isto. Nenhuma linha
+            de lógica foi duplicada: é a arquitetura desacoplada aparecendo na
+            abertura.
           -->
-          <div class="grupo-de-modos">
-            <h3 class="grupo-de-modos__titulo">Um jogador</h3>
-            <div class="modos" id="lista-de-modos" role="group" aria-label="Modos de um jogador">
-              <!-- Preenchido por MenuScreen.js a partir de core/GameModes.js -->
+          <aside class="capa__vitrine" aria-hidden="true">
+            <div class="vitrine">
+              <canvas class="vitrine__canvas" id="canvas-vitrine"></canvas>
+              <p class="vitrine__legenda"><span class="vitrine__ponto"></span>Jogando sozinho</p>
             </div>
-          </div>
+          </aside>
+        </div>
 
-          <div class="grupo-de-modos">
-            <h3 class="grupo-de-modos__titulo">Dois jogadores</h3>
-            <div
-              class="modos modos--duplo"
-              id="lista-de-duelos"
-              role="group"
-              aria-label="Modos de dois jogadores"
-            >
-              <!-- Preenchido por MenuScreen.js -->
-            </div>
-          </div>
 
-          <div class="tela-inicial__atalhos">
-            <button type="button" class="atalho" data-abrir="painel-professores">
-              <span class="atalho__icone" aria-hidden="true">🎓</span>
-              <span>
-                <span class="atalho__nome">Professores especiais</span>
-                <span class="atalho__ajuda">15 combinações de poderes</span>
-              </span>
-            </button>
-            <button type="button" class="atalho" data-abrir="painel-skins">
-              <span class="atalho__icone" aria-hidden="true">🎨</span>
-              <span>
-                <span class="atalho__nome">Peças com suas fotos</span>
-                <span class="atalho__ajuda">Troca em tempo real</span>
-              </span>
-            </button>
+        <div class="grupo-de-modos">
+          <h3 class="secao-rotulo">Um jogador</h3>
+          <div class="modos" id="lista-de-modos" role="group" aria-label="Modos de um jogador">
+            <!-- Preenchido por MenuScreen.js a partir de core/GameModes.js -->
+          </div>
+        </div>
+
+        <div class="grupo-de-modos">
+          <h3 class="secao-rotulo">Dois jogadores, mesma tela</h3>
+          <div
+            class="modos modos--duplo"
+            id="lista-de-duelos"
+            role="group"
+            aria-label="Modos de dois jogadores"
+          >
+            <!-- Preenchido por MenuScreen.js -->
           </div>
         </div>
 
         <!--
-          Coluna da direita: um tabuleiro jogando sozinho, como os fliperamas
-          faziam na tela de espera. Usa o MESMO renderizador da partida real —
-          é a arquitetura desacoplada aparecendo na tela de abertura.
+          A fita dos professores.
+
+          É o que este Tetris tem e nenhum outro: cinco pessoas reais viradas
+          bomba. Estava escondido atrás de um botão com emoji; agora é a
+          primeira coisa depois da capa. Montada por main.js a partir do mesmo
+          catálogo que o jogo usa.
         -->
-        <aside class="vitrine" aria-hidden="true">
-          <canvas class="vitrine__canvas" id="canvas-vitrine"></canvas>
-          <p class="vitrine__legenda">Demonstração</p>
-        </aside>
+        <section class="elenco" aria-labelledby="titulo-elenco">
+          <div class="elenco__cabecalho">
+            <h3 id="titulo-elenco" class="secao-rotulo">Os cinco professores</h3>
+            <button type="button" class="elenco__link" data-abrir="painel-professores">
+              Ver as 15 combinações
+            </button>
+          </div>
+          <ul class="elenco__fita" id="fita-de-professores"></ul>
+        </section>
+
+        <div class="tela-inicial__atalhos">
+          <button type="button" class="atalho" data-abrir="painel-skins">
+            <svg class="atalho__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+                 stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                 stroke-linejoin="round">
+              <rect x="3" y="3" width="8" height="8" rx="1.5" />
+              <rect x="13" y="3" width="8" height="8" rx="1.5" />
+              <rect x="3" y="13" width="8" height="8" rx="1.5" />
+              <path d="M17 13v8M13 17h8" />
+            </svg>
+            <span>
+              <span class="atalho__nome">Peças com suas fotos</span>
+              <span class="atalho__ajuda">Troque a aparência sem sair da partida</span>
+            </span>
+          </button>
+          <button type="button" class="atalho" data-abrir="painel-ranking">
+            <svg class="atalho__icone" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+                 stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                 stroke-linejoin="round">
+              <path d="M4 20h16" />
+              <rect x="5" y="11" width="4" height="9" rx="1" />
+              <rect x="10" y="5" width="4" height="15" rx="1" />
+              <rect x="15" y="14" width="4" height="6" rx="1" />
+            </svg>
+            <span>
+              <span class="atalho__nome">Ranking e estatísticas</span>
+              <span class="atalho__ajuda">Seus recordes por modo, com gráficos</span>
+            </span>
+          </button>
+        </div>
       </section>
 
       <!-- ═══════════════════════ ÁREA DE JOGO ═══════════════════════ -->

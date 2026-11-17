@@ -245,7 +245,7 @@ export const PROFESSORES_VISUAL = {
     caricatura: 'assets/professores/prof-b.png',
     ampliada: 'assets/professores/prof-b-grande.jpg',
   },
-  // Era verde; passou a laranja para acompanhar a bomba do Jhonatta. Verde não
+  // Era verde; passou a laranja para acompanhar a bomba do Alexandro. Verde não
   // existe entre as cinco bombas, e marca de uma cor com explosão de outra é o
   // tipo de incoerência que ninguém consegue desver.
   C: {

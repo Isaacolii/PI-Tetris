@@ -408,6 +408,25 @@ export class MesaCompartilhada {
     return sombra;
   }
 
+  /**
+   * Quanto da próxima célula a peça deste piloto já percorreu, de 0 a 1.
+   *
+   * Mesma ideia do `deslizeDaQueda` do motor de um jogador, e pelo mesmo
+   * motivo: a física continua de célula em célula, só o desenho é contínuo.
+   * Aqui cada piloto tem o próprio relógio, então cada peça tem o seu.
+   */
+  deslizeDe(indice) {
+    const piloto = this.pilotos[indice];
+    if (!this.rodando || this.encerrada) return 0;
+    if (!piloto?.peca || piloto.esperando) return 0;
+
+    const livres = this.fantasmaDe(indice).linha - piloto.peca.linha;
+    if (livres <= 0) return 0;
+
+    const intervalo = this.equipe.intervaloDeQueda();
+    return Math.max(0, Math.min(piloto.tempoDeQueda / intervalo, livres, 1));
+  }
+
   #ativo(indice) {
     if (!this.rodando || this.encerrada) return null;
     const piloto = this.pilotos[indice];

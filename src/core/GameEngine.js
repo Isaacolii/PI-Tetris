@@ -562,6 +562,31 @@ export class GameEngine {
     return fantasma;
   }
 
+  /**
+   * Quanto da próxima célula a peça já percorreu, de 0 a 1.
+   *
+   * O motor continua movendo a peça de célula em célula — é o que mantém a
+   * colisão e os testes exatos. Este número só conta QUANTO do caminho até a
+   * próxima célula o relógio já consumiu, para o renderizador desenhar a peça
+   * no meio do trajeto em vez de pular de linha em linha.
+   *
+   * É tempo, não aparência: por isso mora aqui, onde o tempo entra.
+   *
+   * O limite `livres` é o que impede a peça de ser desenhada DENTRO da pilha.
+   * Sem ele, a peça a uma célula do chão seria desenhada 0,9 célula abaixo do
+   * lugar onde a física já disse que ela para. Com ele, o último trecho
+   * termina exatamente onde a sombra está, e o movimento não tem emenda.
+   */
+  get deslizeDaQueda() {
+    if (!this.peca || this.estado !== ESTADOS.JOGANDO) return 0;
+
+    const livres = this.posicaoFantasma().linha - this.peca.linha;
+    if (livres <= 0) return 0;
+
+    const intervalo = this.pontuacao.intervaloDeQueda(this.efeitos.multiplicadorDeQueda());
+    return Math.max(0, Math.min(this.acumuladorDeQueda / intervalo, livres, 1));
+  }
+
   /** Próximas peças da fila, sem consumi-las. */
   filaDePecas(quantidade = PECAS_VISIVEIS_NA_FILA) {
     return this.sorteio.espiar(quantidade);

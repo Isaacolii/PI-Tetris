@@ -130,7 +130,7 @@ test('Blocos-Bomba marca blocos existentes em vez de destruí-los', () => {
   assert.equal(contarBlocos(grid), antes, 'este poder não deveria remover nada');
   assert.ok(relatorio.bombasCriadas > 0);
 
-  // As bombas são blocos marcados com o Professor Alexandro: herdam o poder dele
+  // As bombas são blocos marcados com o Professor Caetano: herdam o poder dele
   // quando a linha for limpa, sem precisar de um estado novo no tabuleiro.
   let marcados = 0;
   for (let linha = 0; linha < grid.totalDeLinhas; linha++) {

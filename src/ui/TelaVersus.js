@@ -391,6 +391,7 @@ export class TelaVersus {
         grid: jogo.grid,
         peca: jogo.peca,
         fantasma: jogo.estado === ESTADOS.JOGANDO ? jogo.posicaoFantasma() : null,
+        deslize: jogo.deslizeDaQueda,
         efeitos: this.efeitos[indice],
         particulas: this.particulas[indice],
       });
@@ -407,11 +408,15 @@ export class TelaVersus {
   #desenharMesa() {
     if (!this.mesa) return;
 
-    const vivas = this.mesa.pilotos.filter((p) => p.peca && !p.eliminado);
+    const vivas = this.mesa.pilotos.filter((p) => p.peca && !p.esperando);
 
     this.renderizadorDaMesa.desenhar({
       grid: this.mesa.grid,
-      pecas: vivas.map((p) => ({ peca: p.peca, contorno: CORES_DO_JOGADOR[p.indice] })),
+      pecas: vivas.map((p) => ({
+        peca: p.peca,
+        contorno: CORES_DO_JOGADOR[p.indice],
+        deslize: this.mesa.deslizeDe(p.indice),
+      })),
       fantasmas: this.mesa.rodando ? vivas.map((p) => this.mesa.fantasmaDe(p.indice)) : [],
       efeitos: this.efeitoDaMesa,
       particulas: this.particulasDaMesa,

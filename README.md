@@ -39,6 +39,7 @@ Não há `npm install`: o projeto **não tem nenhuma dependência externa**. Nem
 - Rotação SRS com *wall kicks* — permite encaixar peças junto a paredes e em poços
 - Sorteio 7-bag: as sete peças são embaralhadas e distribuídas, sem sequências injustas
 - Sombra da peça, reserva (*hold*), fila de próximas peças, *lock delay*
+- **Queda contínua**: a física continua de célula em célula — é o que mantém a colisão exata e testável — mas a peça é desenhada no meio do trajeto, limitada à distância livre até o chão para nunca invadir a pilha
 - Pontuação oficial, com bônus de 50% para dois Tetris seguidos
 - 5 modos de um jogador: **Maratona**, **Sprint** (40 linhas), **Ultra** (2 minutos), **Zen** (sem fim) e **Professores**
 
@@ -52,7 +53,7 @@ Não há `npm install`: o projeto **não tem nenhuma dependência externa**. Nem
 - Algumas peças trazem um bloco marcado com um professor
 - Encoste dois professores (na horizontal ou vertical) e um **poder especial** dispara
 - **15 combinações, todas implementadas** — explosões, cruz, varredura, linha e coluna coringa, blocos-bomba, compactação da pilha e alteração de velocidade
-- Professores: Alexandro (Explosão), Caetano (Linha), Jhonatta (Coluna), Fabricio (Conversão) e Tadeu (Tempo)
+- Professores: Caetano (Explosão), Jhonatta (Linha), Alexandro (Coluna), Tadeu (Conversão) e Fabricio (Tempo)
 - Cada professor tem a sua **bomba**: a arte aparece na peça, na lista de próximas, no anúncio da combinação e no painel — e amplia ao ser clicada
 - Explosões com forma própria por bomba; duas disparadas juntas misturam as cores dos dois professores
 - Detalhes em [docs/PROFESSORES.md](docs/PROFESSORES.md)
@@ -77,6 +78,8 @@ Não há `npm install`: o projeto **não tem nenhuma dependência externa**. Nem
 
 | ![Demonstração jogando sozinha](capturas/menu-vitrine.png) |
 |---|
+- **Chuva de peças no fundo**: dezesseis tetrominós descendo devagar atrás do conteúdo. São as mesmas formas e cores do jogo, animadas só por `transform` no compositor do navegador — nenhum quadro de JavaScript, e some sozinha com "Reduzir movimento".
+
 | Ao abrir o jogo, um tabuleiro joga sozinho — como as telas de espera dos fliperamas. Ele usa o **mesmo** motor e o **mesmo** renderizador da partida real, com um piloto automático de heurística clássica (avalia buracos, altura e linhas fechadas para cada coluna e rotação). Duas partidas simultâneas saem de graça justamente porque o motor não conhece a tela. |
 
 **Efeitos**

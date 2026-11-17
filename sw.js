@@ -3,21 +3,9 @@
  *
  * CAMADA: infraestrutura do navegador.
  *
- * ═══════════════════════════════════════════════════════════════════════════
- *  A ROTA /api NUNCA É GUARDADA EM CACHE — E ISSO É PROPOSITAL.
- *
- *  Guardar uma resposta dinâmica seria o erro clássico desta combinação:
- *  o jogador terminaria a segunda partida e receberia, palavra por palavra, a
- *  análise da primeira — sem nenhum sinal de que algo está errado.
- *
- *  Cache serve para arquivos que não mudam (o código do jogo). Análise é
- *  resposta a dados novos toda vez, e por isso vai sempre à rede.
- * ═══════════════════════════════════════════════════════════════════════════
- *
  * Estratégias em uso:
  *   • navegação (abrir a página) → rede primeiro, cache como reserva;
  *   • arquivos do jogo           → cache primeiro, rede quando não houver;
- *   • /api/*                     → somente rede, nunca guardado.
  */
 
 /**
@@ -25,7 +13,7 @@
  * Aumente o número sempre que publicar uma alteração, senão os navegadores que
  * já visitaram o site continuarão servindo a versão anterior.
  */
-const VERSAO = 'tetris-pi-v10';
+const VERSAO = 'tetris-pi-v13';
 
 /** Arquivos guardados assim que o jogo é aberto pela primeira vez. */
 const ARQUIVOS_ESSENCIAIS = [
@@ -47,6 +35,8 @@ const ARQUIVOS_ESSENCIAIS = [
   'src/core/Professores.js',
   'src/core/PoderesEspeciais.js',
   'src/core/ProfessorSystem.js',
+  'src/core/Versus.js',
+  'src/core/MesaCompartilhada.js',
   'src/core/EfeitosAtivos.js',
 
   'src/render/skins/catalogo.js',
@@ -63,6 +53,7 @@ const ARQUIVOS_ESSENCIAIS = [
 
   'src/input/KeyboardInput.js',
   'src/input/TouchInput.js',
+  'src/input/GamepadInput.js',
   'src/audio/AudioManager.js',
 
   'src/storage/LocalStore.js',
@@ -80,12 +71,17 @@ const ARQUIVOS_ESSENCIAIS = [
   'src/ui/RankingPanel.js',
   'src/ui/PainelDeProfessores.js',
   'src/ui/Vitrine.js',
+  'src/ui/ChuvaDePecas.js',
+  'src/ui/TelaVersus.js',
+  'src/ui/DistintivoDeProfessor.js',
 
   'assets/professores/prof-a.png',
   'assets/professores/prof-b.png',
   'assets/professores/prof-c.png',
   'assets/professores/prof-d.png',
   'assets/professores/prof-e.png',
+
+  'capturas/og.png',
 
   'assets/professores/prof-a-grande.jpg',
   'assets/professores/prof-b-grande.jpg',
@@ -96,6 +92,10 @@ const ARQUIVOS_ESSENCIAIS = [
   'assets/icons/icone.svg',
   'assets/icons/icone-192.png',
   'assets/icons/icone-512.png',
+
+  // Sem estas duas, o jogo instalado e sem rede cai na fonte do sistema.
+  'assets/fonts/archivo-latin.woff2',
+  'assets/fonts/archivo-black-latin.woff2',
 ];
 
 // ───────────────────────────── Instalação ─────────────────────────────
@@ -151,12 +151,6 @@ self.addEventListener('fetch', (evento) => {
 
   // Requisições para outros domínios não são nossas para guardar.
   if (url.origin !== self.location.origin) return;
-
-  // ★ A rota da análise nunca passa pelo cache.
-  if (url.pathname.startsWith('/api/')) {
-    evento.respondWith(fetch(requisicao));
-    return;
-  }
 
   // Abrir a página: tenta a rede primeiro, para pegar atualizações.
   if (requisicao.mode === 'navigate') {

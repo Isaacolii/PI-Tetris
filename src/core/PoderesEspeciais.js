@@ -278,7 +278,7 @@ function varreduraHorizontal(grid, ponto) {
  *
  * Só tapa buracos de verdade (vazio com bloco acima). Preencher a coluna do
  * fundo até o topo criaria uma torre gigante e mataria o jogador — o poder do
- * Professor Fabricio é consertar o erro, não construir um problema novo.
+ * Professor Tadeu é consertar o erro, não construir um problema novo.
  */
 function colunaCoringa(grid, ponto) {
   const relatorio = relatorioVazio('coluna-coringa', 'Coluna Coringa');

@@ -47,7 +47,10 @@ import { StatsPanel } from './ui/StatsPanel.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
 import { montarRanking } from './ui/RankingPanel.js';
 import { PainelDeProfessores } from './ui/PainelDeProfessores.js';
+import { criarDistintivo } from './ui/DistintivoDeProfessor.js';
+import { visualDoProfessor } from './render/skins/catalogo.js';
 import { Vitrine } from './ui/Vitrine.js';
+import { montarChuvaDePecas } from './ui/ChuvaDePecas.js';
 import { TelaVersus } from './ui/TelaVersus.js';
 
 /**
@@ -281,6 +284,11 @@ function iniciar() {
     combinacoes: document.getElementById('tabela-de-combinacoes'),
   });
 
+  montarFitaDeProfessores();
+
+  // Roda uma vez e acaba: daqui em diante a chuva é só CSS no compositor.
+  montarChuvaDePecas(document.getElementById('chuva-de-pecas'));
+
   new SettingsPanel(
     document.getElementById('corpo-config'),
     configuracoes,
@@ -303,6 +311,7 @@ function iniciar() {
       recorde: document.getElementById('recorde-em-destaque'),
       recordeValor: document.getElementById('recorde-valor'),
       recordeModo: document.getElementById('recorde-modo'),
+      chuva: document.getElementById('chuva-de-pecas'),
     },
     ranking,
     configuracoes,
@@ -756,6 +765,7 @@ function iniciar() {
       grid: jogo.grid,
       peca: jogo.peca,
       fantasma: configuracoes.obter('mostrarFantasma') ? jogo.posicaoFantasma() : null,
+      deslize: jogo.deslizeDaQueda,
       efeitos: efeitosVisuais,
       particulas,
     });
@@ -916,6 +926,49 @@ function iniciar() {
    *     __tetris.desenhar();
    *     __tetris.jogo.grid.matrizVisivel();
    */
+  /**
+   * A fita dos cinco professores na tela inicial.
+   *
+   * Usa `criarDistintivo`, o mesmo construtor do painel e do anúncio de
+   * combinação: trocar a arte de um professor continua sendo um lugar só.
+   */
+  function montarFitaDeProfessores() {
+    const fita = document.getElementById('fita-de-professores');
+    if (!fita) return;
+
+    fita.textContent = '';
+
+    for (const professor of Object.values(PROFESSORES)) {
+      const item = document.createElement('li');
+      item.className = 'elenco__ficha';
+
+      /*
+       * A cor vai na FICHA, não só no distintivo.
+       *
+       * `criarDistintivo` a define no próprio distintivo, e o nome e o tema
+       * são irmãos dele — não descendentes. Sem subir a variável para o `li`,
+       * os dois caíam no cinza de reserva e a ficha perdia a identidade do
+       * professor justamente onde ela está escrita.
+       */
+      item.style.setProperty('--cor-do-professor', visualDoProfessor(professor.id).cor);
+
+      // O distintivo entra como decorativo: quem lê tela já ouve o nome logo
+      // abaixo, e repetir faria o leitor anunciar o professor duas vezes.
+      item.append(criarDistintivo(professor.id, { classe: 'elenco__bomba' }));
+
+      const nome = document.createElement('strong');
+      nome.className = 'elenco__nome';
+      nome.textContent = professor.nome;
+
+      const tema = document.createElement('span');
+      tema.className = 'elenco__tema';
+      tema.textContent = professor.tema;
+
+      item.append(nome, tema);
+      fita.append(item);
+    }
+  }
+
   window.__tetris = {
     jogo,
     skins,

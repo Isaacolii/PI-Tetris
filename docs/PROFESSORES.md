@@ -10,7 +10,7 @@ Algumas peças nascem com um **bloco marcado por um professor**. Quando esse blo
 
 | ![Professores no tabuleiro](../capturas/prof-1-tabuleiro.png) | ![Poder disparado](../capturas/prof-2-poder.png) |
 |---|---|
-| Cada professor é um disco colorido com a letra do id. A peça no ar carrega o Jhonatta (C); a sombra não recebe marca, porque ali ainda não há bloco. | A Cruz Acadêmica (Caetano + Jhonatta) atingindo duas linhas e duas colunas, com o clarão e a onda saindo do ponto da combinação. |
+| Cada professor é um disco colorido com a letra do id. A peça no ar carrega o Alexandro (C); a sombra não recebe marca, porque ali ainda não há bloco. | A Cruz Acadêmica (Jhonatta + Alexandro) atingindo duas linhas e duas colunas, com o clarão e a onda saindo do ponto da combinação. |
 
 **Diagonal não conta.** Foi decisão de jogabilidade: encostar na diagonal aconteceria por acaso o tempo todo, e o jogador perderia o controle sobre quando o poder dispara.
 
@@ -20,11 +20,11 @@ Algumas peças nascem com um **bloco marcado por um professor**. Quando esse blo
 
 | Id | Professor | Tema | Sozinho (quando é levado por uma linha limpa) |
 |---|---|---|---|
-| **A** | Alexandro | Explosão | Destrói a área 3×3 ao redor |
-| **B** | Caetano | Linha | Elimina a linha em que está |
-| **C** | Jhonatta | Coluna | Elimina a coluna em que está |
-| **D** | Fabricio | Conversão | Preenche os 4 buracos mais fundos da pilha |
-| **E** | Tadeu | Tempo | As próximas 2 peças caem na metade da velocidade |
+| **A** | Caetano | Explosão | Destrói a área 3×3 ao redor |
+| **B** | Jhonatta | Linha | Elimina a linha em que está |
+| **C** | Alexandro | Coluna | Elimina a coluna em que está |
+| **D** | Tadeu | Conversão | Preenche os 4 buracos mais fundos da pilha |
+| **E** | Fabricio | Tempo | As próximas 2 peças caem na metade da velocidade |
 
 Os **ids continuam sendo as letras A–E**: são a chave usada pelo tabuleiro, pela tabela de combinações e pelos arquivos salvos. Trocar um nome afeta apenas o que aparece na tela — é o ponto de separar identificador de rótulo. Basta editar o campo `nome` em [`src/core/Professores.js`](../src/core/Professores.js).
 
@@ -41,7 +41,7 @@ Os **ids continuam sendo as letras A–E**: são a chave usada pelo tabuleiro, p
 | B+D | **Linha Coringa** | Completa a linha, que limpa em seguida | ✅ |
 | C+E | **Queda Controlada** | As próximas 3 peças caem a 40% da velocidade | ✅ |
 | D+E | **Reorganização** | Compacta a pilha: os blocos caem e os buracos somem | ✅ |
-| A+D | **Blocos-Bomba** | Marca 4 blocos vizinhos como bombas do Alexandro | ✅ |
+| A+D | **Blocos-Bomba** | Marca 4 blocos vizinhos como bombas do Caetano | ✅ |
 | A+E | **Explosão Lenta** | Área 3×3 mais lentidão por 4 peças | ✅ |
 | B+E | **Varredura Horizontal** | Varre a linha mais cheia; o resto desce | ✅ |
 | C+D | **Coluna Coringa** | Tapa todos os buracos de uma coluna | ✅ |
@@ -50,7 +50,7 @@ Os **ids continuam sendo as letras A–E**: são a chave usada pelo tabuleiro, p
 
 ### Detalhes que vieram de ver os poderes em jogo
 
-**Blocos-Bomba não usa estado novo.** Uma "bomba" é um bloco marcado com o Alexandro na matriz de professores. Assim ela já herda todo o comportamento existente: explode quando a linha dela é limpa, e combina se outro professor encostar. Inventar um terceiro estado obrigaria a ensinar renderizador, motor e persistência sobre um conceito novo.
+**Blocos-Bomba não usa estado novo.** Uma "bomba" é um bloco marcado com o Caetano na matriz de professores. Assim ela já herda todo o comportamento existente: explode quando a linha dela é limpa, e combina se outro professor encostar. Inventar um terceiro estado obrigaria a ensinar renderizador, motor e persistência sobre um conceito novo.
 
 **A Varredura procura a linha mais cheia**, não a linha do ponto da combinação. O ponto fica sempre no topo da pilha, onde a linha está quase vazia — na primeira versão o poder chegou a remover **um único bloco**. Procurar onde há mais o que limpar também combina melhor com a ideia de uma varredura atravessando o tabuleiro.
 

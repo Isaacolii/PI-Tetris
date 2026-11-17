@@ -15,6 +15,37 @@
  * JavaScript quando o jogador troca a skin de fundo (ver BackgroundRenderer).
  */
 
+/* ═══════════════════ 0. Fontes ═══════════════════ */
+
+/*
+ * As duas fontes vêm da própria pasta assets/, não do Google Fonts.
+ *
+ * Instalado como PWA e sem rede, o jogo caía na fonte do sistema e perdia a
+ * personalidade justamente onde ela mais importa — o título da abertura. Além
+ * disso, cada visita abria conexão com dois domínios de terceiros antes de
+ * desenhar a primeira letra.
+ *
+ * Só o recorte `latin` foi baixado: todo acento do português cabe em
+ * U+0000-00FF, e os outros recortes do Google seriam peso morto. São 52 KB
+ * no total, contra os 4 arquivos que a API serviria.
+ */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  /* Arquivo variável: um só para os pesos 400 a 700. */
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../assets/fonts/archivo-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/archivo-black-latin.woff2') format('woff2');
+}
+
 /* ═══════════════════ 1. Variáveis e base ═══════════════════ */
 
 :root {
@@ -72,7 +103,20 @@
   --z-notificacao: 90;
   --z-pular: 100;
 
-  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /*
+   * Archivo Black para o display, Archivo para o corpo.
+   *
+   * A fonte do sistema entregava um "jogo feito num fim de semana": e a
+   * resposta obvia para um arcade — uma fonte de pixel — e ilegivel abaixo de
+   * 14px e vira fantasia barata. Archivo Black e um grotesco pesado e
+   * geometrico, da familia das letras de gabinete de fliperama e cartaz, que
+   * conversa com o bloco quadrado do tetromino sem imitar 1984.
+   *
+   * O reserva e a fonte do sistema: se o Google Fonts nao responder, a pagina
+   * continua legivel, so perde a personalidade.
+   */
+  --fonte-display: 'Archivo Black', 'Arial Black', system-ui, sans-serif;
+  --fonte: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fonte-numeros: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', monospace;
 }
 
@@ -264,6 +308,82 @@ kbd {
   gap: 8px;
 }
 
+/* ═══════════════════ Chuva de peças (fundo da tela inicial) ═══════════════════ */
+
+/*
+ * Dezesseis peças descendo devagar atrás do conteúdo.
+ *
+ * TUDO aqui é `transform` e `opacity`, de propósito: são as duas únicas
+ * propriedades que o navegador anima no compositor, sem recalcular layout nem
+ * repintar nada. É por isso que a chuva continua lisa enquanto a vitrine joga
+ * sozinha no mesmo quadro — ela nem passa pela mesma thread.
+ *
+ * Nada de desfoque, sombra ou gradiente: cada um desses obriga o navegador a
+ * repintar a área toda a cada quadro, e um fundo não vale esse preço.
+ */
+.chuva {
+  position: fixed;
+  /* Folga acima e abaixo: as peças nascem e morrem fora do campo de visão. */
+  inset: -14vh 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Isola o custo: nada do que acontece aqui dentro afeta o resto da página. */
+  contain: layout paint style;
+}
+
+/* O conteúdo passa por cima. Sem isto, a chuva cobriria a página. */
+.cabecalho,
+.conteudo {
+  position: relative;
+  z-index: 1;
+}
+
+/* Durante a partida a chuva sai de cena: ali o fundo é assunto do tabuleiro. */
+.chuva[hidden] {
+  display: none;
+}
+
+.chuva__peca {
+  --lado: calc(18px * var(--escala, 1));
+
+  position: absolute;
+  top: 0;
+  left: var(--x, 50%);
+  display: grid;
+  grid-template: repeat(4, var(--lado)) / repeat(4, var(--lado));
+  color: var(--cor, #fff);
+  opacity: var(--opacidade, 0.1);
+  animation: chover var(--duracao, 24s) linear var(--atraso, 0s) infinite;
+  /* Promove a peça a camada própria: a animação nunca repinta o fundo. */
+  will-change: transform;
+}
+
+.chuva__bloco {
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+/*
+ * Linear, e não suavizada: uma peça que acelera e freia parece ter peso e
+ * puxa o olho. Esta não quer ser notada — quer estar lá.
+ */
+@keyframes chover {
+  from {
+    transform: translate3d(0, -18vh, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(0, 128vh, 0) rotate(var(--giro, 180deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sem movimento, a chuva não é uma versão mais calma de si: ela não existe. */
+  .chuva {
+    display: none;
+  }
+}
+
 /* ═══════════════════ 3. Tela inicial ═══════════════════ */
 
 .conteudo {
@@ -278,48 +398,139 @@ kbd {
  * joga sozinho. Assimétrica de propósito — o conteúdo acionável ocupa a maior
  * parte, e a demonstração é a companhia, não o assunto.
  */
+/* Ícones do cabeçalho: SVG, porque o emoji muda de desenho em cada sistema. */
+.botao__icone {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+}
+
+/* ═══════════════════ Tela inicial ═══════════════════ */
+
+/*
+ * Entrada em cascata ao abrir a pagina.
+ *
+ * Uma pagina que aparece pronta parece estatica; uma que se monta diante de
+ * voce parece um jogo ligando. O atraso e por bloco, nao por item: escalonar
+ * cada cartao faria a espera passar de meio segundo so para ver os modos.
+ */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.tela-inicial > * {
+  animation: surgir 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.tela-inicial > *:nth-child(2) { animation-delay: 80ms; }
+.tela-inicial > *:nth-child(3) { animation-delay: 150ms; }
+.tela-inicial > *:nth-child(4) { animation-delay: 210ms; }
+.tela-inicial > *:nth-child(5) { animation-delay: 260ms; }
+
 .tela-inicial {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: clamp(20px, 4vw, 48px);
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(26px, 4vw, 44px);
   width: 100%;
-  max-width: 1020px;
+  max-width: 1120px;
   margin: auto;
 }
 
-.tela-inicial__principal {
-  min-width: 0;
+/*
+ * A capa: texto a esquerda, jogo acontecendo a direita.
+ *
+ * `align-items: center` e nao `start` porque o tabuleiro e alto e o texto
+ * curto — alinhados pelo topo, a coluna da direita ficava pendurada.
+ */
+.capa {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) auto;
+  gap: clamp(20px, 4vw, 56px);
+  align-items: center;
 }
 
-.tela-inicial__titulo {
-  margin-bottom: 10px;
-  font-size: clamp(1.9rem, 5vw, 2.9rem);
-  font-weight: 780;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
+.capa__etiqueta {
+  margin: 0 0 14px;
+  color: var(--acento);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
-.tela-inicial__resumo {
-  max-width: 52ch;
-  margin: 0 0 22px;
+.capa__titulo {
+  margin: 0 0 16px;
+  font-family: var(--fonte-display);
+  font-size: clamp(2.3rem, 6.4vw, 4.1rem);
+  font-weight: 400; /* Archivo Black ja e o peso; 700 falsearia o negrito */
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.capa__linha { display: block; }
+
+/*
+ * A segunda linha e a que diferencia este Tetris de todos os outros, entao e
+ * ela que recebe a cor. Gradiente no texto, e nao cor chapada, porque as cinco
+ * bombas logo abaixo sao de cinco cores: o titulo apresenta a paleta delas.
+ *
+ * `inline` e deliberado: como `block`, a caixa do gradiente media a largura da
+ * coluna inteira, e o texto — mais curto que ela — pegava so o comeco da
+ * rampa. Quebrando em duas linhas, a cor morria no meio da segunda. Ajustado
+ * ao texto, as cinco cores cabem na frase.
+ */
+.capa__linha--destaque {
+  display: inline;
+  /*
+   * Cor solida PRIMEIRO, gradiente depois.
+   *
+   * `color: transparent` sem reserva e um titulo invisivel em qualquer
+   * navegador que nao recorte o fundo no texto. A ordem importa: a cor fica
+   * fora do @supports, entao ela vale sempre; o bloco abaixo so a substitui
+   * onde o recorte funciona de verdade.
+   */
+  color: #ff9533;
+  /* box-decoration-break faz cada linha repetir a rampa inteira, em vez de
+     fatiá-la: a segunda linha nao sai lavada. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .capa__linha--destaque {
+    background: linear-gradient(96deg, #ff5252 0%, #ff9533 22%, #ffd740 44%, #40c4ff 72%, #b388ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+.capa__resumo {
+  max-width: 46ch;
+  margin: 0 0 24px;
   color: var(--texto-suave);
-  font-size: 0.98rem;
+  font-size: 1rem;
+  line-height: 1.6;
   text-wrap: pretty;
 }
 
-.tela-inicial__entrada {
+.capa__inicio {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
   align-items: flex-end;
-  margin-bottom: 20px;
 }
 
 .campo--nome {
   flex: 1 1 240px;
   max-width: 320px;
+}
+
+/* 44px de altura: e o campo principal da tela e o primeiro alvo de toque. */
+.campo--nome input {
+  min-height: 44px;
 }
 
 /* Recorde: o número que o jogador quer bater, tratado como troféu. */
@@ -354,19 +565,167 @@ kbd {
   font-size: 0.74rem;
 }
 
-/* Atalhos para os dois diferenciais do projeto. */
+/* ── A vitrine, agora em tamanho de herói ── */
+
+.vitrine {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.vitrine__canvas {
+  display: block;
+  width: auto;
+  height: min(52vh, 460px);
+  border-radius: var(--raio);
+  /* Proporção 10 colunas por 16 linhas. */
+  aspect-ratio: 10 / 16;
+  background: #0b0d14;
+  box-shadow:
+    var(--sombra),
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 0 0 5px rgba(0, 0, 0, 0.35),
+    0 0 60px -10px rgba(77, 208, 225, 0.25);
+}
+
+.vitrine__legenda {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/*
+ * O ponto que pulsa diz "isto esta acontecendo agora", nao "isto e uma
+ * imagem". E a diferenca entre a pagina parecer viva ou parecer um print.
+ */
+.vitrine__ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sucesso);
+  box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.6);
+  animation: pulsar-ponto 2s ease-out infinite;
+}
+
+@keyframes pulsar-ponto {
+  from { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(102, 187, 106, 0); }
+  to   { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0); }
+}
+
+/* ── A fita dos cinco professores ── */
+
+.secao-rotulo {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.elenco {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.elenco__cabecalho {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.elenco__link {
+  /* 44px de alvo de toque sem engordar a linha: o padding entra e a margem
+     negativa devolve o espaco, entao o texto continua alinhado ao rotulo. */
+  padding: 15px 4px;
+  margin: -15px -4px;
+  border: 0;
+  background: none;
+  color: var(--acento);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(77, 208, 225, 0.4);
+  transition: text-decoration-color var(--transicao);
+}
+
+.elenco__link:hover,
+.elenco__link:focus-visible { text-decoration-color: currentColor; }
+
+.elenco__fita {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.elenco__ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: center;
+  padding: 16px 10px 14px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie);
+  text-align: center;
+}
+
+/*
+ * A arte da bomba e grande aqui de proposito: e o unico ativo visual que este
+ * projeto tem e nenhum outro Tetris tem. Escondida atras de um botao com
+ * emoji, ela nao convencia ninguem a jogar.
+ */
+.elenco__bomba {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border: 2px solid var(--cor-do-professor, var(--borda-forte));
+  border-radius: 20%;
+  box-shadow: 0 0 20px -4px var(--cor-do-professor, transparent);
+}
+
+.elenco__nome {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.elenco__tema {
+  color: var(--cor-do-professor, var(--texto-fraco));
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Atalhos ── */
+
 .tela-inicial__atalhos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 10px;
-  margin-top: 18px;
 }
 
 .atalho {
   display: flex;
-  gap: 12px;
+  gap: 13px;
   align-items: center;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid var(--borda);
   border-radius: var(--raio-pequeno);
   background: transparent;
@@ -382,50 +741,24 @@ kbd {
   background: var(--superficie);
 }
 
+/* SVG no lugar do emoji: o emoji muda de desenho em cada sistema. */
 .atalho__icone {
   flex-shrink: 0;
-  font-size: 1.3rem;
+  width: 26px;
+  height: 26px;
+  color: var(--acento);
 }
 
 .atalho__nome {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 
 .atalho__ajuda {
   display: block;
   color: var(--texto-fraco);
-  font-size: 0.76rem;
-}
-
-/* A vitrine: o tabuleiro em demonstração. */
-.vitrine {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-}
-
-.vitrine__canvas {
-  display: block;
-  width: 210px;
-  height: 336px;
-  border-radius: var(--raio);
-  /* Proporção 10 colunas por 16 linhas. */
-  aspect-ratio: 10 / 16;
-  box-shadow:
-    var(--sombra),
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 0 0 4px rgba(0, 0, 0, 0.3);
-}
-
-.vitrine__legenda {
-  margin: 0;
-  color: var(--texto-fraco);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.78rem;
 }
 
 /*
@@ -444,15 +777,6 @@ kbd {
 }
 
 .grupo-de-modos + .grupo-de-modos { margin-top: 16px; }
-
-.grupo-de-modos__titulo {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--texto-fraco);
-}
 
 .modos {
   display: grid;
@@ -533,11 +857,41 @@ kbd {
 
 .modo:hover,
 .modo:focus-visible {
-  border-color: var(--acento);
+  border-color: var(--cor-do-modo, var(--acento));
   background: var(--superficie-forte);
   transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.4),
+    0 0 30px -12px var(--cor-do-modo, var(--acento));
 }
+
+/*
+ * Cada modo carrega a cor de uma peca do Tetris.
+ *
+ * Nao e enfeite: era impossivel distinguir cinco cartoes cinzas identicos de
+ * relance, e a cor e a unica linguagem que este jogo ja tinha para dizer
+ * "sao coisas diferentes". As cores saem de CORES_PADRAO, as mesmas que o
+ * tabuleiro pinta — a tela inicial fala o idioma da partida.
+ *
+ * A faixa lateral e `currentcolor` numa borda, e nao um pseudo-elemento, para
+ * nao brigar com o brilho de `::after`.
+ */
+.modo[data-modo] {
+  border-left: 3px solid var(--cor-do-modo, var(--borda));
+}
+
+.modo[data-modo='maratona']    { --cor-do-modo: #4dd0e1; }  /* peça I */
+.modo[data-modo='sprint']      { --cor-do-modo: #66bb6a; }  /* peça S */
+.modo[data-modo='ultra']       { --cor-do-modo: #ef5350; }  /* peça Z */
+.modo[data-modo='zen']         { --cor-do-modo: #42a5f5; }  /* peça J */
+/* O roxo da peca T (#ab47bc) dava 3,79:1 no nome do cartao — abaixo dos
+   4,5:1 que texto pequeno exige. Dois passos mais claro resolve sem sair
+   da familia da peca. */
+.modo[data-modo='professores'] { --cor-do-modo: #ce93d8; }  /* peça T */
+.modo[data-modo='duelo:lado-a-lado']   { --cor-do-modo: #ffb74d; }  /* peça L */
+.modo[data-modo='duelo:compartilhado'] { --cor-do-modo: #ffd740; }  /* peça O */
+
+.modo__nome { color: var(--cor-do-modo, inherit); }
 
 .modo:hover::after,
 .modo:focus-visible::after {
@@ -1324,15 +1678,24 @@ kbd {
   font-weight: 800;
 }
 
+/*
+ * O distintivo da TABELA de combinacoes.
+ *
+ * Tinha 24px — tamanho de favicon. Nessa escala a arte da bomba virava um
+ * borrao colorido e a tabela deixava de responder a pergunta que ela existe
+ * para responder: QUAIS duas bombas formam este poder. 44px e o menor tamanho
+ * em que da para reconhecer o rosto de relance, e ainda e alvo de toque
+ * valido para quem abre a lupa tocando.
+ */
 .professor__distintivo--pequeno {
-  width: 24px;
-  height: 24px;
-  border-width: 1.5px;
-  font-size: 0.72rem;
+  width: 44px;
+  height: 44px;
+  border-width: 2px;
+  font-size: 1.05rem;
 }
 
 .professor__distintivo--pequeno + .professor__distintivo--pequeno {
-  margin-left: 5px;
+  margin-left: 7px;
 }
 
 /*
@@ -2409,21 +2772,41 @@ body.tabuleiro-grande .tabuleiro__canvas {
 
 @media (max-width: 900px) {
   /*
-   * A vitrine é a primeira a sair. Ela é companhia, não conteúdo — em tela
-   * estreita o espaço pertence ao nome, aos modos e aos atalhos.
+   * A capa empilha: texto em cima, tabuleiro embaixo.
+   *
+   * Antes a vitrine era escondida em tela estreita, por ser "companhia, nao
+   * conteudo". Deixou de ser verdade quando ela virou o heroi da pagina: o
+   * jogo acontecendo e justamente o que convence alguem a tocar em Jogar.
+   * Ela encolhe, mas fica.
    */
-  .tela-inicial {
+  .capa {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .vitrine {
-    display: none;
+  .capa__vitrine {
+    display: flex;
+    justify-content: center;
+  }
+
+  .vitrine__canvas {
+    height: min(42vh, 320px);
   }
 }
 
 @media (max-width: 860px) {
+  /*
+   * So o icone cabe, mas o botao nao pode encolher com ele: sem alvo minimo
+   * de 44px fica dificil acertar com o dedo, que e exatamente onde este
+   * tamanho de tela e usado.
+   */
   .botao__rotulo {
     display: none;
+  }
+
+  .cabecalho__acoes .botao {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
   }
 
   .jogo {

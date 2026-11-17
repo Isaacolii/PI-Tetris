@@ -226,6 +226,7 @@ export class Vitrine {
     this.renderizador.desenhar({
       grid: this.jogo.grid,
       peca: this.jogo.peca,
+      deslize: this.jogo.deslizeDaQueda,
       fantasma: null, // sombra numa demonstração só polui
     });
   }
