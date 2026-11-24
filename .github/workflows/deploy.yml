@@ -1,0 +1,36 @@
+# Publica o jogo na VPS a cada push na branch main.
+#
+# O jogo é HTML, CSS e JavaScript puro: não há build, não há dependências.
+# Por isso o passo de publicação é só um "git pull" no servidor — o que o
+# repositório tem é exatamente o que o navegador recebe.
+#
+# O endereço do servidor, o usuário e a chave SSH ficam em Settings > Secrets
+# and variables > Actions. Nenhum deles aparece aqui nem no histórico.
+
+name: Deploy Automático na Oracle
+
+on:
+  push:
+    branches:
+      - main
+  # Permite publicar pelo botão "Run workflow", sem precisar de um commit novo.
+  workflow_dispatch:
+
+# Duas publicações ao mesmo tempo deixariam a pasta do servidor pela metade.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Atualizar código na VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/ubuntu/pi-tetris
+            git pull origin main
